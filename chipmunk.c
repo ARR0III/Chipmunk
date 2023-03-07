@@ -1,26 +1,42 @@
 /*
   This is translator for programming language "Chipmonk";
 
-  BEFORE: "u>u>u>u>l0>l0>l0>l0>a1f10[a2,3f10[a1000,2000]s5,6]oe"
-  AFTER:
+  COMMANDS:
+    u - save data from register
+    o - load data from register
+    > - come to right register
+    < - come to lelt register
+    l - load data to register
+    a - addition register and data
+    s - substruction register and data
+    f - analog "counter = ??? while(counter) {operations}
+    [ - start while block
+    ] - end while block
+    ( - start numbers block "(5*3/2-799)"
+    ) - end numbers block
+    e - exit program
+    , - using old command
 
+  BEFORE: "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]oe"
+  AFTER:
+  
   push eax
   push ebx
   push ecx
   push edx
-  mov eax, 0
-  mov ebx, 0
-  mov ecx, 0
-  mov edx, 0
+  mov eax, (10-9)
+  mov ebx, 100
+  mov ecx, 1000
+  mov edx, 10000
   add eax, 1
-  mov ecx, 10
+  mov ecx, (10*10)
 label @00000000:
   add eax, 2
   add eax, 3
   push ecx
-  mov eax, 10
+  mov ecx, 10
 label @00000001:
-  add eax, 1000
+  add eax, (5*9/32-6)
   add eax, 2000
 loop @00000001
   pop ecx
@@ -36,26 +52,19 @@ loop @00000000
 #include <string.h>
 
 #define ARG_FOR      'f' /* for */
-
 #define ARG_LOAD     'l' /* mov register, 0 */
-
 #define ARG_MALLOC   'm' /* malloc array */
 #define ARG_ADD      'a' /* addition */
 #define ARG_SUB      's' /* substruction */
 #define ARG_EXIT     'e' /* exit program */
-
 #define ARG_LEFT     '<' /* left  register */
 #define ARG_RIGHT    '>' /* right register */
-
 #define ARG_PUSH     'u' /* write data */
 #define ARG_POP      'o' /* read data */
-
 #define ARG_BEGIN    '('
 #define ARG_END      ')'
-
 #define ARG_START    '['
 #define ARG_FINISH   ']'
-
 #define ARG_CONTINUE ',' /* using old command */
 
 #define REGISTER_COUNTER 4
@@ -173,7 +182,6 @@ void __parser(chip * ctx, char data) {
     if (ctx->loop > 0) { /* if FOR() using */
       ctx->command = 3;
       __assembler(ctx, data);
-      ctx->regist = ctx->old_regist;
     }
 
     ctx->command = 2;
@@ -264,7 +272,7 @@ int main(int argc, char * argv[]) {
     string = argv[1];
   }
   else
-    string = "u>u>u>u>l0>l0>l0>l0>a1f10[a2,3f10[a1000,2000]s5,6]oe";
+    string = "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]oe";
 
   result = __corrector(string, strlen(string));
 
