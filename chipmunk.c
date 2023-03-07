@@ -1,77 +1,220 @@
+/*
+  This is translator for programming language "Chipmonk";
+
+  BEFORE: "u>u>u>u>l0>l0>l0>l0>a1f10[a2,3f10[a1000,2000]s5,6]oe"
+  AFTER:
+
+  push eax
+  push ebx
+  push ecx
+  push edx
+  mov eax, 0
+  mov ebx, 0
+  mov ecx, 0
+  mov edx, 0
+  add eax, 1
+  mov ecx, 10
+label @00000000:
+  add eax, 2
+  add eax, 3
+  push ecx
+  mov eax, 10
+label @00000001:
+  add eax, 1000
+  add eax, 2000
+loop @00000001
+  pop ecx
+  sub eax, 5
+  sub eax, 6
+loop @00000000
+  pop eax
+  ret
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define ARG_FOR 'f' /* for */
+#define ARG_FOR      'f' /* for */
 
-#define ARG_ZER 'z' /* mov eax, 0 */
-#define ARG_MLC 'm' /* malloc array */
+#define ARG_LOAD     'l' /* mov register, 0 */
 
-#define ARG_ADD 'a' /* addition */
-#define ARG_SUB 's' /* substruction */
+#define ARG_MALLOC   'm' /* malloc array */
+#define ARG_ADD      'a' /* addition */
+#define ARG_SUB      's' /* substruction */
+#define ARG_EXIT     'e' /* exit program */
 
-#define ARG_LFT '<' /* left  move */
-#define ARG_RHT '>' /* right move */
+#define ARG_LEFT     '<' /* left  register */
+#define ARG_RIGHT    '>' /* right register */
 
-#define ARG_PSH 'u' /* write data */
-#define ARG_POP 'o' /* read data */
+#define ARG_PUSH     'u' /* write data */
+#define ARG_POP      'o' /* read data */
 
-#define ARG_EXT 'e' /* exit program */
+#define ARG_BEGIN    '('
+#define ARG_END      ')'
 
-#define ARG_SRT '['
-#define ARG_FIN ']'
+#define ARG_START    '['
+#define ARG_FINISH   ']'
 
-#define ARG_CNT ','
+#define ARG_CONTINUE ',' /* using old command */
 
-char * command[] = {
-  "  add eax, ",
-  "  sub eax, ",
+#define REGISTER_COUNTER 4
 
-  "  push eax\n",
-  "  pop eax\n",
+typedef enum {
+  REG_EAX, REG_EBX, REG_ECX, REG_EDX
+} REG;
 
-  "  ret\n",
+typedef enum {
+  OPERATION, REGISTER, DATA
+} USI;
 
-  "  mov ecx, ", "label", "loop", "  xor eax, eax\n"
+typedef struct {
+  int using;       /* OPERATION, REGISTER or DATA */
+  
+  int regist;      /* using eax, ebx, ecx, edx */
+  int old_regist;
+
+  int command;     /* using command */
+  int loop;        /* index loop metka */
+  int error;       /* correct input data, or not */
+} chip;
+
+const char * __command[] = {
+  "add",   /* 0 */
+  "sub",   /* 1 */
+  "mov",   /* 2 */
+  "push",  /* 3 */
+  "pop",   /* 4 */
+
+  "label", /* 5 */
+  "loop",  /* 6 */
+  "ret\n"  /* 7 */
 };
 
+const char * __register[] = {
+  "eax", "ebx", "ecx", "edx"
+};
 
-int parser(char data) {
-  int result = -1;
-
-  if (data >= '0' && data <= '9') {
-    return (int)data;
+void __assembler(chip * ctx, char data) {
+  if (REGISTER == ctx->using) {
+    return;
   }
-
-  switch (data) {
-    case ARG_ADD: result = 0;
-                  break;
-    case ARG_SUB: result = 1;
-                  break;
-    case ARG_PSH: result = 2;
-                  break;
-    case ARG_POP: result = 3;
-                  break;
-    case ARG_EXT: result = 4;
-                  break;
-    case ARG_FOR: result = 5;
-                  break;
-    case ARG_SRT: result = 6;
-                  break;
-    case ARG_FIN: result = 7;
-                  break;
-    case ARG_ZER: result = 8;
-                  break;
-
-    case ARG_CNT: break;
-
-    default: break;
+  else
+  if (OPERATION == ctx->using) {
+    if (5 == ctx->command) {
+      printf("\n%s @%.8d:", __command[ctx->command], ctx->loop);
+      ctx->loop = ctx->loop + 1;
+    }
+    else 
+    if (6 == ctx->command) {
+      printf("\n%s @%.8d", __command[ctx->command], ctx->loop);
+    }
+    else
+    if (3 == ctx->command || 4 == ctx->command)
+      printf("\n  %s %s", __command[ctx->command],
+                          __register[ctx->regist]);
+    else
+    if (7 == ctx->command)
+      printf("\n  %s", __command[ctx->command]);
+    else
+      printf("\n  %s %s, ", __command[ctx->command],
+                            __register[ctx->regist]);
   }
-
-  return result;
+  else
+  if (DATA == ctx->using) {
+    putc(data, stdout);
+  }
 }
 
-int correct(char * data, int size) {
+void __parser(chip * ctx, char data) {
+
+/***************************************************************/
+  ctx->using = DATA;
+
+  if (data >= '0' && data <= '9') {
+    return;
+  }
+
+  if (data == ARG_BEGIN || data == ARG_END ||
+      data == '+' || data == '-' || data == '*' || data == '/') {
+    return;
+  }
+
+/***************************************************************/
+  ctx->using = REGISTER;
+
+  if (ARG_LEFT == data) {
+    ctx->regist = ctx->regist - 1;
+    
+    if (ctx->regist < 0) {
+      ctx->regist = ctx->regist + REGISTER_COUNTER;
+    }
+
+    return;
+  }
+
+  if (ARG_RIGHT == data) {
+    ctx->regist = ctx->regist + 1;
+    
+    if (REGISTER_COUNTER == ctx->regist) {
+      ctx->regist = ctx->regist - REGISTER_COUNTER;
+    }    
+
+    return;
+  }
+
+/***************************************************************/
+  ctx->using = OPERATION;
+
+  if (ARG_FOR == data) {
+    ctx->old_regist = ctx->regist;
+    ctx->regist = REG_ECX;
+
+    if (ctx->loop > 0) { /* if FOR() using */
+      ctx->command = 3;
+      __assembler(ctx, data);
+      ctx->regist = ctx->old_regist;
+    }
+
+    ctx->command = 2;
+    return;
+  }
+
+  if (6 == ctx->command) {
+    if (ctx->loop > 0) {
+      ctx->old_regist = ctx->regist;
+      ctx->regist = REG_ECX;
+      ctx->command = 4;
+
+      __assembler(ctx, data);
+
+      ctx->regist = ctx->old_regist;
+    }
+  }
+
+  if (ARG_FINISH == data) {
+    ctx->loop = ctx->loop - 1;
+    ctx->loop = (ctx->loop < 0) ? 0 : ctx->loop;
+    ctx->command = 6;
+    return;
+  }
+
+  switch(data) {
+    case ARG_ADD:    ctx->command = 0; break;
+    case ARG_SUB:    ctx->command = 1; break;
+    case ARG_LOAD:   ctx->command = 2; break;
+    case ARG_PUSH:   ctx->command = 3; break;
+    case ARG_POP:    ctx->command = 4; break;
+
+    case ARG_EXIT:   ctx->command = 7; break;
+    
+    case ARG_START:  ctx->command = 5;
+                     ctx->regist = ctx->old_regist;
+                     break;
+  }
+}
+
+int __corrector(char * data, int size) {
   int res = 0;
   int i;
 
@@ -79,13 +222,18 @@ int correct(char * data, int size) {
     if (data[i] >= '0' && data[i] <= '9') {
       continue;
     }
-    
-    if (ARG_FOR != data[i] && ARG_MLC != data[i] &&
-        ARG_ADD != data[i] && ARG_SUB != data[i] &&
-        ARG_LFT != data[i] && ARG_RHT != data[i] &&
-        ARG_PSH != data[i] && ARG_POP != data[i] &&
-        ARG_EXT != data[i] && ARG_SRT != data[i] &&
-        ARG_FIN != data[i] && ARG_CNT != data[i] && ARG_ZER != data[i]) {
+
+    if (data[i] == '+' || data[i] == '-' || data[i] == '*' || data[i] == '/') {
+      continue;
+    }
+
+    if (ARG_FOR    != data[i] && ARG_MALLOC != data[i] &&
+        ARG_ADD    != data[i] && ARG_SUB    != data[i] &&
+        ARG_LEFT   != data[i] && ARG_RIGHT  != data[i] &&
+        ARG_PUSH   != data[i] && ARG_POP    != data[i] &&
+        ARG_EXIT   != data[i] && ARG_START  != data[i] &&
+        ARG_FINISH != data[i] && ARG_LOAD   != data[i] &&
+        ARG_BEGIN  != data[i] && ARG_END    != data[i] && ARG_CONTINUE != data[i]) {
 
       res = i;
       break;
@@ -95,30 +243,33 @@ int correct(char * data, int size) {
   return res;
 }
 
-int main (int argc, char * argv[]) {
+int main(int argc, char * argv[]) {
 
   char * string = NULL;
-  int result, old_result;
 
-  int pos = 0;
+  int result, i, pos = 0;
 
-  int i;
-  int number = 0;
-  int regist = 0;
+  chip * ctx = (chip *)malloc(sizeof(chip));
 
-  int label = 0;
-  int old_label = 0;
+  if (ctx == NULL) return -1;
+
+  ctx->regist     = REG_EAX;   /* first register */
+  ctx->using      = OPERATION; /* OPERATION, REGISTER or DATA */
+  ctx->old_regist = REG_EAX;   /* old using register */
+  ctx->command    = 0;         /* using command */
+  ctx->loop       = 0;         /* index loop metka */
+  ctx->error      = 0;         /* correct input data, or not */
 
   if (argc == 2 && argv[1]) {
     string = argv[1];
   }
   else
-    string = "uza255s309a96,300,91,559s631,9,800uf32[a64]oe";
+    string = "u>u>u>u>l0>l0>l0>l0>a1f10[a2,3f10[a1000,2000]s5,6]oe";
 
-  result = correct(string, strlen(string));
+  result = __corrector(string, strlen(string));
 
   if (result) {
-    printf("Error symbol position = %d, symbol = %c;\n", result, string[result]);
+    printf("Error symbol position = %d, symbol = \'%c\'\n", result, string[result]);
     printf("data:%s\n", string);
    
     for (i = 0; i < (result + 5); i++)
@@ -131,57 +282,12 @@ int main (int argc, char * argv[]) {
   }
 
   while (string[pos]) {
-    result = parser(string[pos]);
-
-    /* number */
-    if (result >= '0' && result <= '9') {
-      if (0 == regist) {
-        regist = 1;
-      }
-
-      printf("%c", result);
-    }
-    /* command */
-    else {
-      if (regist > 0) {
-        regist = 0;
-
-        putc('\n', stdout);
-
-        if (-1 == result) {
-          result = old_result;
-        }
-      }
-
-      printf("%s", command[result]);
-      
-      if (ARG_SRT == string[pos]) {
-        printf(" %.6dL:\n", label);
-        old_label = label;
-        label++;
-      }
-
-      if (ARG_FIN == string[pos]) {
-        printf(" %.6dL\n", old_label);
-      }
-
-      old_result = result;
-    }
-
+    __parser(ctx, string[pos]);
+    __assembler(ctx, string[pos]);
     pos++;
   }
 
+  free(ctx);
+
   return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
