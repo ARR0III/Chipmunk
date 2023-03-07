@@ -12,14 +12,14 @@
     f - analog "counter = ??? while(counter) {operations}
     [ - start while block
     ] - end while block
-    ( - start numbers block "(5*3/2-799)"
+    ( - start numbers block " l(5*3)a(7/2)"
     ) - end numbers block
     e - exit program
     , - using old command
 
-  BEFORE: "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]oe"
+  BEFORE: "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]<o<o<o<oe"
+
   AFTER:
-  
   push eax
   push ebx
   push ecx
@@ -43,6 +43,9 @@ loop @00000001
   sub eax, 5
   sub eax, 6
 loop @00000000
+  pop edx
+  pop ecx
+  pop ebx
   pop eax
   ret
 */
@@ -52,19 +55,26 @@ loop @00000000
 #include <string.h>
 
 #define ARG_FOR      'f' /* for */
+
 #define ARG_LOAD     'l' /* mov register, 0 */
+
 #define ARG_MALLOC   'm' /* malloc array */
 #define ARG_ADD      'a' /* addition */
 #define ARG_SUB      's' /* substruction */
 #define ARG_EXIT     'e' /* exit program */
+
 #define ARG_LEFT     '<' /* left  register */
 #define ARG_RIGHT    '>' /* right register */
+
 #define ARG_PUSH     'u' /* write data */
 #define ARG_POP      'o' /* read data */
+
 #define ARG_BEGIN    '('
 #define ARG_END      ')'
+
 #define ARG_START    '['
 #define ARG_FINISH   ']'
+
 #define ARG_CONTINUE ',' /* using old command */
 
 #define REGISTER_COUNTER 4
@@ -272,7 +282,7 @@ int main(int argc, char * argv[]) {
     string = argv[1];
   }
   else
-    string = "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]oe";
+    string = "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]<o<o<o<oe";
 
   result = __corrector(string, strlen(string));
 
@@ -299,3 +309,15 @@ int main(int argc, char * argv[]) {
 
   return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
