@@ -9,7 +9,7 @@
     l - load data to register
     a - addition register and data
     s - substruction register and data
-    f - analog "counter = ??? while(counter) {operations}
+    f - analog "counter = ??? while(counter--) {operations}
     n - not operation
     [ - start while block
     ] - end while block
