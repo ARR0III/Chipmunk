@@ -1,0 +1,41 @@
+File open: "chip.script"
+
+	push eax
+	push ebx
+	push ecx
+	push edx
+	mov eax, 0
+	mov ebx, 60
+	mov ecx, 0001
+	mov edx, FFFFFFFF
+	add eax, 10
+	mov ecx, (10*10)
+.L2:
+	add eax, 10
+	add eax, 0BAD
+	push ecx
+	mov ecx, 20
+.L4:
+	add eax, 20
+	add eax, 20
+	nop
+	sub eax, 00C0FFEE
+	sub eax, 20
+	loop .L4
+	pop ecx
+	sub eax, 10
+	sub eax, 10
+	loop .L2
+	mov eax, 0
+	mov ecx, 30
+.L5:
+	add ebx, 30
+	add ebx, 300
+	add ebx, 3000
+	nop
+	loop .L5
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
