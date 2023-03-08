@@ -307,8 +307,10 @@ void __chip_init(chip * ctx) {
 int main(int argc, char * argv[]) {
 
   char * string = NULL;
+  FILE * f      = NULL;
 
   int result, i, pos = 0;
+  int c = 0;
 
   chip * ctx = (chip *)malloc(sizeof(chip));
 
@@ -317,30 +319,48 @@ int main(int argc, char * argv[]) {
   __chip_init(ctx);
 
   if (argc == 2 && argv[1]) {
-    string = argv[1];
-  }
-  else
-    string = "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
-
-  result = __corrector(string, strlen(string));
-
-  if (result) {
-    printf("Error symbol position = %d, symbol = \'%c\'\n", result, string[result]);
-    printf("data:%s\n", string);
-   
-    for (i = 0; i < (result + 5); i++)
-      putc(' ', stdout);
-
-    putc('^', stdout);
-    putc('\n', stdout);
+    f = fopen(argv[1], "rb");
     
-    return -1;
+    if (NULL != f) {
+      printf("File open: \"%s\"\n" ,argv[1]);
+    }
+    else {
+      string = argv[1];
+    }
+  }
+  else {
+    string = "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
   }
 
-  while (string[pos]) {
-    __parser(ctx, string[pos]);
-    __assembler(ctx, string[pos]);
-    pos++;
+  if (NULL == f) {
+    result = __corrector(string, strlen(string));
+
+    if (result) {
+      printf("Error symbol position = %d, symbol = \'%c\'\n", result, string[result]);
+      printf("data:%s\n", string);
+   
+      for (i = 0; i < (result + 5); i++)
+        putc(' ', stdout);
+
+      putc('^', stdout);
+      putc('\n', stdout);
+    
+      return -1;
+    }
+  }
+
+  if (f) {
+    while ((c = fgetc(f)) != EOF) {
+      __parser(ctx, (char)c);
+      __assembler(ctx, (char)c);
+    }
+  }
+  else {
+    while (string[pos]) {
+      __parser(ctx, string[pos]);
+      __assembler(ctx, string[pos]);
+      pos++;
+    }
   }
 
   free(ctx);
