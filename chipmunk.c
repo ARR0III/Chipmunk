@@ -18,8 +18,7 @@
     e - exit program
     , - using old command
 
-  BEFORE: "u>u>u>u>l0>l0>l0>l0>a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
-
+  BEFORE: "u>u>u>u>>>>>l0>l0>l0>l0<<<a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
   AFTER:
 	push eax
 	push ebx
@@ -31,30 +30,30 @@
 	mov edx, 0
 	add eax, 10
 	mov ecx, 10
-.L00000002:
+.L2:
 	add eax, 10
 	add eax, 10
 	push ecx
 	mov ecx, 20
-.L00000004:
+.L4:
 	add eax, 20
 	add eax, 20
 	nop
 	sub eax, 20
 	sub eax, 20
-	loop .L00000004
+	loop .L4
 	pop ecx
 	sub eax, 10
 	sub eax, 10
-	loop .L00000002
+	loop .L2
 	mov eax, 0
 	mov ecx, 30
-.L00000005:
+.L5:
 	add ebx, 30
 	add ebx, 300
 	add ebx, 3000
 	nop
-	loop .L00000005
+	loop .L5
 	pop edx
 	pop ecx
 	pop ebx
@@ -67,34 +66,26 @@
 #include <string.h>
 
 #define ARG_FOR      'f' /* for */
-
 #define ARG_LOAD     'l' /* mov register, 0 */
-
 #define ARG_MALLOC   'm' /* malloc array */
 #define ARG_ADD      'a' /* addition */
 #define ARG_SUB      's' /* substruction */
 #define ARG_EXIT     'e' /* exit program */
-
 #define ARG_NOP      'n' /* not operation */
-
 #define ARG_LEFT     '<' /* left  register */
 #define ARG_RIGHT    '>' /* right register */
-
 #define ARG_PUSH     'u' /* write data */
 #define ARG_POP      'o' /* read data */
-
 #define ARG_BEGIN    '('
 #define ARG_END      ')'
-
 #define ARG_START    '['
 #define ARG_FINISH   ']'
-
 #define ARG_CONTINUE ',' /* using old command */
 
-#define REGISTER_COUNTER 4
+#define REGISTER_QUANTITY 8
 
 typedef enum {
-  REG_EAX, REG_EBX, REG_ECX, REG_EDX
+  REG_EAX, REG_EBX, REG_ECX, REG_EDX, REG_ESP, REG_EBP, REG_ESI, REG_EDI,
 } REG;
 
 typedef enum {
@@ -128,7 +119,8 @@ const char * __command[] = {
 };
 
 const char * __register[] = {
-  "eax", "ebx", "ecx", "edx"
+  "eax", "ebx", "ecx", "edx",
+  "esp", "ebp", "esi", "edi"
 };
 
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
@@ -140,11 +132,11 @@ void __assembler(chip * ctx, char data) {
   if (OPERATION == ctx->using) {
     if (LABEL == ctx->command) {
       ctx->loop++;
-      printf("\n.L%.8d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) : ctx->loop_counter);
+      printf("\n.L%d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) : ctx->loop_counter);
     }
     else
     if (LOOP == ctx->command) {
-      printf("\n\t%s .L%.8d", __command[ctx->command],
+      printf("\n\t%s .L%d", __command[ctx->command],
                            (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) - ctx->loop_corrector : ctx->loop_counter);
       ctx->loop_corrector++;
       ctx->loop--;
@@ -192,7 +184,7 @@ void __parser(chip * ctx, char data) {
     ctx->regist--;
 
     if (ctx->regist < 0) {
-      ctx->regist = ctx->regist + REGISTER_COUNTER;
+      ctx->regist = ctx->regist + REGISTER_QUANTITY;
     }
 
     return;
@@ -201,8 +193,8 @@ void __parser(chip * ctx, char data) {
   if (ARG_RIGHT == data) {
     ctx->regist++;
 
-    if (REGISTER_COUNTER == ctx->regist) {
-      ctx->regist = ctx->regist - REGISTER_COUNTER;
+    if (REGISTER_QUANTITY == ctx->regist) {
+      ctx->regist = ctx->regist - REGISTER_QUANTITY;
     }    
 
     return;
@@ -324,7 +316,7 @@ int main(int argc, char * argv[]) {
     string = argv[1];
   }
   else
-    string = "u>u>u>u>l0>l0>l0>l0>a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
+    string = "u>u>u>u>>>>>l0>l0>l0>l0<<<a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
 
   result = __corrector(string, strlen(string));
 
