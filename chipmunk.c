@@ -1,5 +1,5 @@
 /*
-  This is translator for programming language "Chipmonk";
+  This is translator for programming language "Chipmunk";
 
   COMMANDS:
     u - save data from register
@@ -10,6 +10,7 @@
     a - addition register and data
     s - substruction register and data
     f - analog "counter = ??? while(counter) {operations}
+    n - not operation
     [ - start while block
     ] - end while block
     ( - start numbers block " l(5*3)a(7/2)"
@@ -17,37 +18,48 @@
     e - exit program
     , - using old command
 
-  BEFORE: "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]<o<o<o<oe"
+  BEFORE: "u>u>u>u>l0>l0>l0>l0>a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
 
   AFTER:
-  push eax
-  push ebx
-  push ecx
-  push edx
-  mov eax, (10-9)
-  mov ebx, 100
-  mov ecx, 1000
-  mov edx, 10000
-  add eax, 1
-  mov ecx, (10*10)
-label @00000000:
-  add eax, 2
-  add eax, 3
-  push ecx
-  mov ecx, 10
-label @00000001:
-  add eax, (5*9/32-6)
-  add eax, 2000
-loop @00000001
-  pop ecx
-  sub eax, 5
-  sub eax, 6
-loop @00000000
-  pop edx
-  pop ecx
-  pop ebx
-  pop eax
-  ret
+	push eax
+	push ebx
+	push ecx
+	push edx
+	mov eax, 0
+	mov ebx, 0
+	mov ecx, 0
+	mov edx, 0
+	add eax, 10
+	mov ecx, 10
+.L00000002:
+	add eax, 10
+	add eax, 10
+	push ecx
+	mov ecx, 20
+.L00000004:
+	add eax, 20
+	add eax, 20
+	nop
+	sub eax, 20
+	sub eax, 20
+	loop .L00000004
+	pop ecx
+	sub eax, 10
+	sub eax, 10
+	loop .L00000002
+	mov eax, 0
+	mov ecx, 30
+.L00000005:
+	add ebx, 30
+	add ebx, 300
+	add ebx, 3000
+	nop
+	loop .L00000005
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
 */
 
 #include <stdio.h>
@@ -62,6 +74,8 @@ loop @00000000
 #define ARG_ADD      'a' /* addition */
 #define ARG_SUB      's' /* substruction */
 #define ARG_EXIT     'e' /* exit program */
+
+#define ARG_NOP      'n' /* not operation */
 
 #define ARG_LEFT     '<' /* left  register */
 #define ARG_RIGHT    '>' /* right register */
@@ -84,59 +98,67 @@ typedef enum {
 } REG;
 
 typedef enum {
+/*  0    1    2     3    4      5     6    7    8 */
+  ADD, SUB, MOV, PUSH, POP, LABEL, LOOP, RET, NOP
+} COM;
+
+typedef enum {
   OPERATION, REGISTER, DATA
 } USI;
 
 typedef struct {
-  int using;       /* OPERATION, REGISTER or DATA */
-  
-  int regist;      /* using eax, ebx, ecx, edx */
+  int using;        /* OPERATION, REGISTER or DATA */
+
+  int regist;       /* using eax, ebx, ecx, edx */
   int old_regist;
 
-  int command;     /* using command */
-  int loop;        /* index loop metka */
-  int error;       /* correct input data, or not */
+  int command;      /* using command */
+
+  int loop;         /* index loop metka */
+  int loop_counter;
+  int loop_corrector;
+
+  int error;        /* correct input data, or not */
 } chip;
 
 const char * __command[] = {
-  "add",   /* 0 */
-  "sub",   /* 1 */
-  "mov",   /* 2 */
-  "push",  /* 3 */
-  "pop",   /* 4 */
+  "add", "sub", "mov", "push", "pop",
 
-  "label", /* 5 */
-  "loop",  /* 6 */
-  "ret\n"  /* 7 */
+  "label", "loop", "ret\n", "nop"
 };
 
 const char * __register[] = {
   "eax", "ebx", "ecx", "edx"
 };
 
+/* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
 void __assembler(chip * ctx, char data) {
   if (REGISTER == ctx->using) {
     return;
   }
   else
   if (OPERATION == ctx->using) {
-    if (5 == ctx->command) {
-      printf("\n%s @%.8d:", __command[ctx->command], ctx->loop);
-      ctx->loop = ctx->loop + 1;
-    }
-    else 
-    if (6 == ctx->command) {
-      printf("\n%s @%.8d", __command[ctx->command], ctx->loop);
+    if (LABEL == ctx->command) {
+      ctx->loop++;
+      printf("\n.L%.8d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) : ctx->loop_counter);
     }
     else
-    if (3 == ctx->command || 4 == ctx->command)
-      printf("\n  %s %s", __command[ctx->command],
+    if (LOOP == ctx->command) {
+      printf("\n\t%s .L%.8d", __command[ctx->command],
+                           (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) - ctx->loop_corrector : ctx->loop_counter);
+      ctx->loop_corrector++;
+      ctx->loop--;
+      if (ctx->loop < 0) ctx->loop = 0;
+    }
+    else
+    if (PUSH == ctx->command || POP == ctx->command)
+      printf("\n\t%s %s", __command[ctx->command],
                           __register[ctx->regist]);
     else
-    if (7 == ctx->command)
-      printf("\n  %s", __command[ctx->command]);
+    if (RET == ctx->command || NOP == ctx->command)
+      printf("\n\t%s", __command[ctx->command]);
     else
-      printf("\n  %s %s, ", __command[ctx->command],
+      printf("\n\t%s %s, ", __command[ctx->command],
                             __register[ctx->regist]);
   }
   else
@@ -146,9 +168,13 @@ void __assembler(chip * ctx, char data) {
 }
 
 void __parser(chip * ctx, char data) {
-
 /***************************************************************/
   ctx->using = DATA;
+
+  if (data == ' ' || data == '\n' || data == '\t') {
+    ctx->using = REGISTER;
+    return;
+  }
 
   if (data >= '0' && data <= '9') {
     return;
@@ -163,8 +189,8 @@ void __parser(chip * ctx, char data) {
   ctx->using = REGISTER;
 
   if (ARG_LEFT == data) {
-    ctx->regist = ctx->regist - 1;
-    
+    ctx->regist--;
+
     if (ctx->regist < 0) {
       ctx->regist = ctx->regist + REGISTER_COUNTER;
     }
@@ -173,8 +199,8 @@ void __parser(chip * ctx, char data) {
   }
 
   if (ARG_RIGHT == data) {
-    ctx->regist = ctx->regist + 1;
-    
+    ctx->regist++;
+
     if (REGISTER_COUNTER == ctx->regist) {
       ctx->regist = ctx->regist - REGISTER_COUNTER;
     }    
@@ -189,20 +215,28 @@ void __parser(chip * ctx, char data) {
     ctx->old_regist = ctx->regist;
     ctx->regist = REG_ECX;
 
-    if (ctx->loop > 0) { /* if FOR() using */
-      ctx->command = 3;
+    if (ctx->loop > 0) {      /* if FOR() using */
+      ctx->command = PUSH;
       __assembler(ctx, data);
     }
 
-    ctx->command = 2;
+    if (ctx->loop_corrector > 0) {
+      ctx->loop_corrector = 0;
+      ctx->loop_counter++;
+    }
+
+    ctx->loop_counter++;
+
+    ctx->command = MOV;
     return;
   }
 
-  if (6 == ctx->command) {
+  /* if OLD command == LOOP */
+  if (LOOP == ctx->command) {
     if (ctx->loop > 0) {
       ctx->old_regist = ctx->regist;
       ctx->regist = REG_ECX;
-      ctx->command = 4;
+      ctx->command = POP;
 
       __assembler(ctx, data);
 
@@ -210,25 +244,25 @@ void __parser(chip * ctx, char data) {
     }
   }
 
+  if (ARG_START == data) {
+    ctx->regist = ctx->old_regist;
+    ctx->command = LABEL;
+    return;
+  }
+
   if (ARG_FINISH == data) {
-    ctx->loop = ctx->loop - 1;
-    ctx->loop = (ctx->loop < 0) ? 0 : ctx->loop;
-    ctx->command = 6;
+    ctx->command = LOOP;
     return;
   }
 
   switch(data) {
-    case ARG_ADD:    ctx->command = 0; break;
-    case ARG_SUB:    ctx->command = 1; break;
-    case ARG_LOAD:   ctx->command = 2; break;
-    case ARG_PUSH:   ctx->command = 3; break;
-    case ARG_POP:    ctx->command = 4; break;
-
-    case ARG_EXIT:   ctx->command = 7; break;
-    
-    case ARG_START:  ctx->command = 5;
-                     ctx->regist = ctx->old_regist;
-                     break;
+    case ARG_ADD:   ctx->command = ADD;  break;
+    case ARG_SUB:   ctx->command = SUB;  break;
+    case ARG_LOAD:  ctx->command = MOV;  break;
+    case ARG_PUSH:  ctx->command = PUSH; break;
+    case ARG_POP:   ctx->command = POP;  break;
+    case ARG_NOP:   ctx->command = NOP;  break;
+    case ARG_EXIT:  ctx->command = RET;  break;
   }
 }
 
@@ -241,17 +275,19 @@ int __corrector(char * data, int size) {
       continue;
     }
 
-    if (data[i] == '+' || data[i] == '-' || data[i] == '*' || data[i] == '/') {
+    if (data[i] == '+' || data[i] == '-' || data[i] == '*'  ||
+        data[i] == '/' || data[i] == ' ' || data[i] == '\n' || data[i] == '\t') {
       continue;
     }
 
-    if (ARG_FOR    != data[i] && ARG_MALLOC != data[i] &&
-        ARG_ADD    != data[i] && ARG_SUB    != data[i] &&
-        ARG_LEFT   != data[i] && ARG_RIGHT  != data[i] &&
-        ARG_PUSH   != data[i] && ARG_POP    != data[i] &&
-        ARG_EXIT   != data[i] && ARG_START  != data[i] &&
-        ARG_FINISH != data[i] && ARG_LOAD   != data[i] &&
-        ARG_BEGIN  != data[i] && ARG_END    != data[i] && ARG_CONTINUE != data[i]) {
+    if (ARG_FOR      != data[i] && ARG_MALLOC != data[i] &&
+        ARG_ADD      != data[i] && ARG_SUB    != data[i] &&
+        ARG_LEFT     != data[i] && ARG_RIGHT  != data[i] &&
+        ARG_PUSH     != data[i] && ARG_POP    != data[i] &&
+        ARG_EXIT     != data[i] && ARG_START  != data[i] &&
+        ARG_FINISH   != data[i] && ARG_LOAD   != data[i] &&
+        ARG_BEGIN    != data[i] && ARG_END    != data[i] &&
+        ARG_CONTINUE != data[i] && ARG_NOP    != data[i]) {
 
       res = i;
       break;
@@ -259,6 +295,17 @@ int __corrector(char * data, int size) {
   }
 
   return res;
+}
+
+void __chip_init(chip * ctx) {
+  ctx->regist         = REG_EAX;   /* first register */
+  ctx->using          = OPERATION; /* OPERATION, REGISTER or DATA */
+  ctx->old_regist     = REG_EAX;   /* old using register */
+  ctx->command        = RET;       /* using command */
+  ctx->loop           = 0;         /* index loop metka */
+  ctx->loop_counter   = 0;         /* counter 'f' metks */
+  ctx->loop_corrector = 0;         /*  */
+  ctx->error          = 0;         /* correct input data, or not */
 }
 
 int main(int argc, char * argv[]) {
@@ -271,18 +318,13 @@ int main(int argc, char * argv[]) {
 
   if (ctx == NULL) return -1;
 
-  ctx->regist     = REG_EAX;   /* first register */
-  ctx->using      = OPERATION; /* OPERATION, REGISTER or DATA */
-  ctx->old_regist = REG_EAX;   /* old using register */
-  ctx->command    = 0;         /* using command */
-  ctx->loop       = 0;         /* index loop metka */
-  ctx->error      = 0;         /* correct input data, or not */
+  __chip_init(ctx);
 
   if (argc == 2 && argv[1]) {
     string = argv[1];
   }
   else
-    string = "u>u>u>u>l(10-9)>l100>l1000>l10000>a1f(10*10)[a2,3f10[a(5*9/32-6),2000]s5,6]<o<o<o<oe";
+    string = "u>u>u>u>l0>l0>l0>l0>a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
 
   result = __corrector(string, strlen(string));
 
@@ -309,15 +351,4 @@ int main(int argc, char * argv[]) {
 
   return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
 
