@@ -18,28 +18,28 @@
     e - exit program
     , - using old command
 
-  BEFORE: "u>u>u>u>>>>>l0>l0>l0>l0<<<a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
+  BEFORE: "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
   AFTER:
 	push eax
 	push ebx
 	push ecx
 	push edx
 	mov eax, 0
-	mov ebx, 0
-	mov ecx, 0
-	mov edx, 0
+	mov ebx, 60
+	mov ecx, 0001
+	mov edx, FFFFFFFF
 	add eax, 10
-	mov ecx, 10
+	mov ecx, (10*10)
 .L2:
 	add eax, 10
-	add eax, 10
+	add eax, 0BAD
 	push ecx
 	mov ecx, 20
 .L4:
 	add eax, 20
 	add eax, 20
 	nop
-	sub eax, 20
+	sub eax, 00C0FFEE
 	sub eax, 20
 	loop .L4
 	pop ecx
@@ -168,7 +168,9 @@ void __parser(chip * ctx, char data) {
     return;
   }
 
-  if (data >= '0' && data <= '9') {
+  if ((data >= '0' && data <= '9') ||
+      (data >= 'A' && data <= 'F')) {
+
     return;
   }
 
@@ -263,7 +265,9 @@ int __corrector(char * data, int size) {
   int i;
 
   for (i = 0; (i < size) && data[i]; i++) {
-    if (data[i] >= '0' && data[i] <= '9') {
+    if ((data[i] >= '0' && data[i] <= '9') ||
+        (data[i] >= 'A' && data[i] <= 'F')) {
+
       continue;
     }
 
@@ -316,7 +320,7 @@ int main(int argc, char * argv[]) {
     string = argv[1];
   }
   else
-    string = "u>u>u>u>>>>>l0>l0>l0>l0<<<a10f10[a10,10f20[a20,20ns20,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
+    string = "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
 
   result = __corrector(string, strlen(string));
 
