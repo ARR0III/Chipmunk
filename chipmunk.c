@@ -2,19 +2,19 @@
   This is translator for programming language "Chipmunk";
 
   COMMANDS:
-    u - save data from register
-    o - load data from register
+    u - save data from register in stack
+    o - load data from stack in register
     > - come to right register
     < - come to lelt register
     l - load data to register
     a - addition register and data
     s - substruction register and data
-    f - analog "counter = ??? while(counter--) {operations}
+    f - analog "counter = ??? while(counter--){operations}"
     n - not operation
     [ - start while block
     ] - end while block
-    ( - start numbers block " l(5*3)a(7/2)"
-    ) - end numbers block
+    ( - start data block "l(5*3)a(7/2)"
+    ) - end data block
     e - exit program
     , - using old command
 
