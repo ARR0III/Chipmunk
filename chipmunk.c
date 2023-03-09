@@ -4,56 +4,70 @@
   COMMANDS:
     u - save data from register in stack
     o - load data from stack in register
+
     > - come to right register
     < - come to lelt register
+
+    n - not operation
+    r - move in old register data from active register
     l - load data to register
     a - addition register and data
     s - substruction register and data
-    f - analog "counter = ??? while(counter--){operations}"
-    n - not operation
-    [ - start while block
-    ] - end while block
-    ( - start data block "l(5*3)a(7/2)"
-    ) - end data block
     e - exit program
     , - using old command
 
-  BEFORE: "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
+    f - analog "ecx = ??? while(ecx--){operations}"
+    [ - start while block
+    ] - end while block
+    ( - start data block "l(5*3)>a(7/2)<"
+    ) - end data block
+
+  BEFORE: "u>u>u>u<<<l0>l0>l10>lFF<fr[<<a1,10,100f20[s2,10,100f(3*10)[a30,00C0FFEEs30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
   AFTER:
 	push eax
 	push ebx
 	push ecx
 	push edx
 	mov eax, 0
-	mov ebx, 60
-	mov ecx, 0001
-	mov edx, FFFFFFFF
-	add eax, 10
-	mov ecx, (10*10)
+	mov ebx, 0
+	mov ecx, 10
+	mov edx, FF
+	mov ecx, ecx
 .L2:
+	add eax, 1
 	add eax, 10
-	add eax, 0BAD
+	add eax, 100
 	push ecx
 	mov ecx, 20
 .L4:
-	add eax, 20
-	add eax, 20
+	sub eax, 2
+	sub eax, 10
+	sub eax, 100
+	push ecx
+	mov ecx, (3*10)
+.L6:
+	add eax, 30
+	add eax, 00C0FFEE
+	sub eax, 30
+	sub eax, 300
+	loop .L6
+	pop ecx
+	push eax
+	mov eax, FF
+	add eax, ebx
 	nop
-	sub eax, 00C0FFEE
-	sub eax, 20
+	pop eax
 	loop .L4
 	pop ecx
-	sub eax, 10
-	sub eax, 10
 	loop .L2
-	mov eax, 0
-	mov ecx, 30
-.L5:
-	add ebx, 30
-	add ebx, 300
-	add ebx, 3000
+	mov ecx, 0BAD
+	mov ecx, ecx
+.L8:
 	nop
-	loop .L5
+	nop
+	nop
+	nop
+	loop .L8
 	pop edx
 	pop ecx
 	pop ebx
@@ -65,6 +79,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define ARG_REGISTER 'r' /* move in old register data from active register */
 #define ARG_FOR      'f' /* for */
 #define ARG_LOAD     'l' /* mov register, 0 */
 #define ARG_MALLOC   'm' /* malloc array */
@@ -125,8 +140,8 @@ const char * __register[] = {
 
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
 void __assembler(chip * ctx, char data) {
-  if (REGISTER == ctx->using) {
-    return;
+  if (REGISTER == ctx->using && ARG_REGISTER == data) {
+    printf("%s", __register[ctx->regist]);
   }
   else
   if (OPERATION == ctx->using) {
@@ -182,6 +197,10 @@ void __parser(chip * ctx, char data) {
 /***************************************************************/
   ctx->using = REGISTER;
 
+  if (ARG_REGISTER == data) {
+    return;
+  }
+
   if (ARG_LEFT == data) {
     ctx->regist--;
 
@@ -216,7 +235,7 @@ void __parser(chip * ctx, char data) {
 
     if (ctx->loop_corrector > 0) {
       ctx->loop_corrector = 0;
-      ctx->loop_counter++;
+      ctx->loop_counter += ctx->loop_counter;
     }
 
     ctx->loop_counter++;
@@ -273,6 +292,7 @@ int __corrector(char * data, int size) {
 
     if (data[i] == '+' || data[i] == '-' || data[i] == '*'  ||
         data[i] == '/' || data[i] == ' ' || data[i] == '\n' || data[i] == '\t') {
+
       continue;
     }
 
@@ -283,7 +303,7 @@ int __corrector(char * data, int size) {
         ARG_EXIT     != data[i] && ARG_START  != data[i] &&
         ARG_FINISH   != data[i] && ARG_LOAD   != data[i] &&
         ARG_BEGIN    != data[i] && ARG_END    != data[i] &&
-        ARG_CONTINUE != data[i] && ARG_NOP    != data[i]) {
+        ARG_CONTINUE != data[i] && ARG_NOP    != data[i] && ARG_REGISTER != data[i]) {
 
       res = i;
       break;
@@ -329,7 +349,7 @@ int main(int argc, char * argv[]) {
     }
   }
   else {
-    string = "u>u>u>u>>>>>l0>l60>l0001>lFFFFFFFF<<<a10f(10*10)[a10,0BADf20[a20,20ns00C0FFEE,20]s10,10]l0>f30[a30,300,3000n]>>o<o<o<oe";
+    string = "u>u>u>u<<<l0>l0>l10>lFF<fr[<<a1,10,100f20[s2,10,100f(3*10)[a30,00C0FFEEs30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
   }
 
   if (NULL == f) {
