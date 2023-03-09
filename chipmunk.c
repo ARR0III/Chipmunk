@@ -121,14 +121,16 @@ void __assembler(chip * ctx, char data) {
   }
   else
   if (DATA == ctx->using) {
+    if (data == ' ' || data == '\n' || data == '\t') {
+      return;
+    }
     putc(data, stdout);
   }
 }
 
 void __parser(chip * ctx, char data) {
 /***************************************************************/
-  ctx->using  = DATA;
-  ctx->regist = ctx->old_regist;
+  ctx->using = DATA;
 
   if (data == ' ' || data == '\n' || data == '\t') {
     return;
@@ -146,7 +148,7 @@ void __parser(chip * ctx, char data) {
     return;
   }
 /***************************************************************/
-  ctx->using  = REGISTER;
+  ctx->using = REGISTER;
 
   if (ARG_REGISTER == data) {
     return;
@@ -172,7 +174,7 @@ void __parser(chip * ctx, char data) {
     return;
   }
 /***************************************************************/
-  ctx->using  = OPERATION;
+  ctx->using = OPERATION;
 
   if (ARG_FOR == data) {
     ctx->old_regist = ctx->regist;
@@ -189,8 +191,8 @@ void __parser(chip * ctx, char data) {
     }
 
     ctx->loop_counter++;
-
     ctx->command = MOV;
+
     return;
   }
 
@@ -219,17 +221,13 @@ void __parser(chip * ctx, char data) {
   }
 
   switch(data) {
-    case ARG_ADD:   ctx->command = ADD;  break;
-    case ARG_SUB:   ctx->command = SUB;  break;
-    case ARG_LOAD:  ctx->command = MOV;  break;
-    case ARG_PUSH:  ctx->command = PUSH; break;
-    case ARG_EXIT:  ctx->command = RET;  break;
-
-    case ARG_POP:   ctx->command = POP;
-                    break;
-
-    case ARG_NOP:   ctx->command = NOP;
-                    break;
+    case ARG_ADD:  ctx->command = ADD;  break;
+    case ARG_SUB:  ctx->command = SUB;  break;
+    case ARG_LOAD: ctx->command = MOV;  break;
+    case ARG_PUSH: ctx->command = PUSH; break;
+    case ARG_EXIT: ctx->command = RET;  break;
+    case ARG_POP:  ctx->command = POP;  break;
+    case ARG_NOP:  ctx->command = NOP;  break;
   }
 /***************************************************************/
 }
@@ -304,7 +302,7 @@ int main(int argc, char * argv[]) {
     }
   }
   else {
-    string = "u>u>u>u<<<l0>l0>l10>lFF<fr[<<a1,10,100f20[s2,10,100f(3*10)[a30,00C0FFEEs30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
+    string = "u>u>u>u<<<l0>l0>l10>lFFf>r[<<<a1,10,100f20[s2,10,100f(3*10)[a30,300s30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
   }
 
   if (NULL == f) {
