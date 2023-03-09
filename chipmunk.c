@@ -19,6 +19,7 @@
     f - analog "ecx = ??? while(ecx--){operations}"
     [ - start while block
     ] - end while block
+
     ( - start data block "l(5*3)>a(7/2)<"
     ) - end data block
 */
@@ -39,11 +40,11 @@
 #define ARG_RIGHT    '>' /* right register */
 #define ARG_PUSH     'u' /* write data */
 #define ARG_POP      'o' /* read data */
+#define ARG_CONTINUE ',' /* using old command */
 #define ARG_BEGIN    '('
 #define ARG_END      ')'
 #define ARG_START    '['
 #define ARG_FINISH   ']'
-#define ARG_CONTINUE ',' /* using old command */
 
 #define REGISTER_QUANTITY 8
 
@@ -61,8 +62,8 @@ typedef enum {
 } USI;
 
 typedef enum {
-  EXC_COMMAND, EXC_OPERAND, EXC_ALL
-} EXC;
+  EXP_COMMAND, EXP_OPERAND, EXP_UNKNOWN
+} EXP;
 
 typedef struct {
   USI   using;          /* OPERATION, REGISTER or DATA */
@@ -71,7 +72,7 @@ typedef struct {
   REG   regist;         /* using eax, ebx, ecx, edx */
   REG   old_regist;     /* old using register */
 
-  EXC   expect;         /* expect data or this alono command */
+  EXP   expect;         /* expect data or this alono command */
 
   int   loop;           /* index loop metka */
   int   loop_counter;
@@ -80,7 +81,6 @@ typedef struct {
 
 const char * __command[] = {
   "add", "sub", "mov", "push", "pop",
-
   "label", "loop", "ret", "nop"
 };
 
@@ -221,13 +221,14 @@ void __parser(chip * ctx, char data) {
   }
 
   switch(data) {
-    case ARG_ADD:  ctx->command = ADD;  break;
-    case ARG_SUB:  ctx->command = SUB;  break;
-    case ARG_LOAD: ctx->command = MOV;  break;
-    case ARG_PUSH: ctx->command = PUSH; break;
-    case ARG_EXIT: ctx->command = RET;  break;
-    case ARG_POP:  ctx->command = POP;  break;
-    case ARG_NOP:  ctx->command = NOP;  break;
+    case ARG_ADD:      ctx->command = ADD;  break;
+    case ARG_SUB:      ctx->command = SUB;  break;
+    case ARG_LOAD:     ctx->command = MOV;  break;
+    case ARG_PUSH:     ctx->command = PUSH; break;
+    case ARG_EXIT:     ctx->command = RET;  break;
+    case ARG_POP:      ctx->command = POP;  break;
+    case ARG_NOP:      ctx->command = NOP;  break;
+    case ARG_CONTINUE: break;
   }
 /***************************************************************/
 }
@@ -274,7 +275,7 @@ void __chip_init(chip * ctx) {
   ctx->loop           = 0;         /* index loop metka */
   ctx->loop_counter   = 0;         /* counter 'f' metks */
   ctx->loop_corrector = 0;         /* ---долго объяснять что это за хренатень--- */
-  ctx->expect         = EXC_COMMAND;      /* what we are expect */
+  ctx->expect         = EXP_COMMAND;      /* what we are expect */
 }
 
 int main(int argc, char * argv[]) {
