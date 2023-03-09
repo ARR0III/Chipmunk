@@ -21,58 +21,6 @@
     ] - end while block
     ( - start data block "l(5*3)>a(7/2)<"
     ) - end data block
-
-  BEFORE: "u>u>u>u<<<l0>l0>l10>lFF<fr[<<a1,10,100f20[s2,10,100f(3*10)[a30,00C0FFEEs30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
-  AFTER:
-	push eax
-	push ebx
-	push ecx
-	push edx
-	mov eax, 0
-	mov ebx, 0
-	mov ecx, 10
-	mov edx, FF
-	mov ecx, ecx
-.L2:
-	add eax, 1
-	add eax, 10
-	add eax, 100
-	push ecx
-	mov ecx, 20
-.L4:
-	sub eax, 2
-	sub eax, 10
-	sub eax, 100
-	push ecx
-	mov ecx, (3*10)
-.L6:
-	add eax, 30
-	add eax, 00C0FFEE
-	sub eax, 30
-	sub eax, 300
-	loop .L6
-	pop ecx
-	push eax
-	mov eax, FF
-	add eax, ebx
-	nop
-	pop eax
-	loop .L4
-	pop ecx
-	loop .L2
-	mov ecx, 0BAD
-	mov ecx, ecx
-.L8:
-	nop
-	nop
-	nop
-	nop
-	loop .L8
-	pop edx
-	pop ecx
-	pop ebx
-	pop eax
-	ret
 */
 
 #include <stdio.h>
@@ -112,25 +60,28 @@ typedef enum {
   OPERATION, REGISTER, DATA
 } USI;
 
+typedef enum {
+  EXC_COMMAND, EXC_OPERAND, EXC_ALL
+} EXC;
+
 typedef struct {
-  int using;        /* OPERATION, REGISTER or DATA */
+  USI   using;          /* OPERATION, REGISTER or DATA */
+  COM   command;        /* using command */
 
-  int regist;       /* using eax, ebx, ecx, edx */
-  int old_regist;
+  REG   regist;         /* using eax, ebx, ecx, edx */
+  REG   old_regist;     /* old using register */
 
-  int command;      /* using command */
+  EXC   expect;         /* expect data or this alono command */
 
-  int loop;         /* index loop metka */
-  int loop_counter;
-  int loop_corrector;
-
-  int error;        /* correct input data, or not */
+  int   loop;           /* index loop metka */
+  int   loop_counter;
+  int   loop_corrector;
 } chip;
 
 const char * __command[] = {
   "add", "sub", "mov", "push", "pop",
 
-  "label", "loop", "ret\n", "nop"
+  "label", "loop", "ret", "nop"
 };
 
 const char * __register[] = {
@@ -176,10 +127,10 @@ void __assembler(chip * ctx, char data) {
 
 void __parser(chip * ctx, char data) {
 /***************************************************************/
-  ctx->using = DATA;
+  ctx->using  = DATA;
+  ctx->regist = ctx->old_regist;
 
   if (data == ' ' || data == '\n' || data == '\t') {
-    ctx->using = REGISTER;
     return;
   }
 
@@ -191,11 +142,11 @@ void __parser(chip * ctx, char data) {
 
   if (data == ARG_BEGIN || data == ARG_END ||
       data == '+' || data == '-' || data == '*' || data == '/') {
+
     return;
   }
-
 /***************************************************************/
-  ctx->using = REGISTER;
+  ctx->using  = REGISTER;
 
   if (ARG_REGISTER == data) {
     return;
@@ -220,9 +171,8 @@ void __parser(chip * ctx, char data) {
 
     return;
   }
-
 /***************************************************************/
-  ctx->using = OPERATION;
+  ctx->using  = OPERATION;
 
   if (ARG_FOR == data) {
     ctx->old_regist = ctx->regist;
@@ -273,10 +223,15 @@ void __parser(chip * ctx, char data) {
     case ARG_SUB:   ctx->command = SUB;  break;
     case ARG_LOAD:  ctx->command = MOV;  break;
     case ARG_PUSH:  ctx->command = PUSH; break;
-    case ARG_POP:   ctx->command = POP;  break;
-    case ARG_NOP:   ctx->command = NOP;  break;
     case ARG_EXIT:  ctx->command = RET;  break;
+
+    case ARG_POP:   ctx->command = POP;
+                    break;
+
+    case ARG_NOP:   ctx->command = NOP;
+                    break;
   }
+/***************************************************************/
 }
 
 int __corrector(char * data, int size) {
@@ -320,8 +275,8 @@ void __chip_init(chip * ctx) {
   ctx->command        = RET;       /* using command */
   ctx->loop           = 0;         /* index loop metka */
   ctx->loop_counter   = 0;         /* counter 'f' metks */
-  ctx->loop_corrector = 0;         /*  */
-  ctx->error          = 0;         /* correct input data, or not */
+  ctx->loop_corrector = 0;         /* ---долго объяснять что это за хренатень--- */
+  ctx->expect         = EXC_COMMAND;      /* what we are expect */
 }
 
 int main(int argc, char * argv[]) {
@@ -374,6 +329,8 @@ int main(int argc, char * argv[]) {
       __parser(ctx, (char)c);
       __assembler(ctx, (char)c);
     }
+
+    putc('\n', stdout);
   }
   else {
     while (string[pos]) {
@@ -381,6 +338,8 @@ int main(int argc, char * argv[]) {
       __assembler(ctx, string[pos]);
       pos++;
     }
+
+    putc('\n', stdout);
   }
 
   free(ctx);
