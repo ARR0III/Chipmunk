@@ -1,39 +1,49 @@
-File open: "chip.script"
+File open: "chip.cm"
 
 	push eax
 	push ebx
 	push ecx
 	push edx
 	mov eax, 0
-	mov ebx, 60
-	mov ecx, 0001
-	mov edx, FFFFFFFF
-	add eax, 10
-	mov ecx, (10*10)
+	mov ebx, 0
+	mov ecx, 10
+	mov edx, FF
+	mov ecx, ecx
 .L2:
+	add eax, 1
 	add eax, 10
-	add eax, 0BAD
+	add eax, 100
 	push ecx
 	mov ecx, 20
 .L4:
-	add eax, 20
-	add eax, 20
+	sub eax, 2
+	sub eax, 10
+	sub eax, 100
+	push ecx
+	mov ecx, (3*10)
+.L6:
+	add eax, 30
+	add eax, 300
+	sub eax, 30
+	sub eax, 300
+	loop .L6
+	pop ecx
+	push eax
+	mov eax, FF
+	add eax, ebx
 	nop
-	sub eax, 00C0FFEE
-	sub eax, 20
+	pop eax
 	loop .L4
 	pop ecx
-	sub eax, 10
-	sub eax, 10
 	loop .L2
-	mov eax, 0
-	mov ecx, 30
-.L5:
-	add ebx, 30
-	add ebx, 300
-	add ebx, 3000
+	mov ecx, 0BAD
+	mov ecx, ecx
+.L8:
 	nop
-	loop .L5
+	nop
+	nop
+	nop
+	loop .L8
 	pop edx
 	pop ecx
 	pop ebx
