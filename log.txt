@@ -8,7 +8,7 @@ File open: "chip.cm"
 	mov ebx, 0
 	mov ecx, 10
 	mov edx, FF
-	mov ecx, ecx
+	mov ecx, edx
 .L2:
 	add eax, 1
 	add eax, 10
