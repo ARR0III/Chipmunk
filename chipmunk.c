@@ -130,7 +130,7 @@ void __assembler(chip * ctx, char data) {
 
 void __parser(chip * ctx, char data) {
 /***************************************************************/
-  ctx->using = DATA;
+  ctx->using  = DATA;
 
   if (data == ' ' || data == '\n' || data == '\t') {
     return;
@@ -148,28 +148,30 @@ void __parser(chip * ctx, char data) {
     return;
   }
 /***************************************************************/
-  ctx->using = REGISTER;
+  ctx->using  = REGISTER;
 
   if (ARG_REGISTER == data) {
     return;
   }
 
   if (ARG_LEFT == data) {
-    ctx->regist--;
-
-    if (ctx->regist < 0) {
-      ctx->regist = ctx->regist + REGISTER_QUANTITY;
+    if (REG_EAX == ctx->regist) {
+      ctx->regist = REG_EDI;
+    }
+    else {
+      ctx->regist--;
     }
 
     return;
   }
 
   if (ARG_RIGHT == data) {
-    ctx->regist++;
-
-    if (REGISTER_QUANTITY == ctx->regist) {
-      ctx->regist = ctx->regist - REGISTER_QUANTITY;
-    }    
+    if (REG_EDI == ctx->regist) {
+      ctx->regist = REG_EAX;
+    }
+    else {
+      ctx->regist++;
+    } 
 
     return;
   }
