@@ -4,24 +4,36 @@
   COMMANDS:
     u - save data from register in stack
     o - load data from stack in register
-
     > - come to right register
     < - come to lelt register
-
     n - not operation
-    r - move in old register data from active register
+    r - using active register
     l - load data to register
     a - addition register and data
     s - substruction register and data
     e - exit program
     , - using old command
-
     f - analog "ecx = ??? while(ecx--){operations}"
     [ - start while block
     ] - end while block
-
     ( - start data block "l(5*3)>a(7/2)<"
     ) - end data block
+
+  BEFORE: "<<<ul<rn>>>>l10f<<r[>l20<a>rn]<<<<oe"
+  
+  AFTER:
+	push ebp
+	mov ebp, esp
+	nop
+	mov eax, 10
+	mov ecx, eax
+.L2:
+	mov ebx, 20
+	add eax, ebx
+	nop
+	loop .L2
+	pop ebp
+	ret
 */
 
 #include <stdio.h>
@@ -347,4 +359,3 @@ int main(int argc, char * argv[]) {
 
   return 0;
 }
-
