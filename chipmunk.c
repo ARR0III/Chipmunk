@@ -186,6 +186,19 @@ void __parser(chip * ctx, char data) {
 /***************************************************************/
   ctx->using = OPERATION;
 
+  /* if OLD command == LOOP */
+  if (LOOP == ctx->command) {
+    if (ctx->loop > 0) {
+      ctx->old_regist = ctx->regist;
+      ctx->regist = REG_ECX;
+      ctx->command = POP;
+
+      __assembler(ctx, data);
+
+      ctx->regist = ctx->old_regist;
+    }
+  }
+
   if (ARG_FOR == data) {
     ctx->old_regist = ctx->regist;
     ctx->regist = REG_ECX;
@@ -203,19 +216,6 @@ void __parser(chip * ctx, char data) {
     ctx->loop_counter++;
     ctx->command = MOV;
     return;
-  }
-
-  /* if OLD command == LOOP */
-  if (LOOP == ctx->command) {
-    if (ctx->loop > 0) {
-      ctx->old_regist = ctx->regist;
-      ctx->regist = REG_ECX;
-      ctx->command = POP;
-
-      __assembler(ctx, data);
-
-      ctx->regist = ctx->old_regist;
-    }
   }
 
   if (ARG_START == data) {
