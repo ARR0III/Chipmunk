@@ -1,24 +1,6 @@
 /*
   This is translator for programming language "Chipmunk";
 
-  COMMANDS:
-    u - save data from register in stack
-    o - load data from stack in register
-    > - come to right register
-    < - come to lelt register
-    n - not operation
-    r - using active register
-    l - load data to register
-    a - addition register and data
-    s - substruction register and data
-    e - exit program
-    , - using old command
-    f - analog "ecx = ??? while(ecx--){operations}"
-    [ - start while block
-    ] - end while block
-    ( - start data block "l(5*3)>a(7/2)<"
-    ) - end data block
-
   BEFORE: "<<<ul<rn>>>>l10f<<r[>l20<a>rn]<<<<oe"
   
   AFTER:
@@ -31,7 +13,9 @@
 	mov ebx, 20
 	add eax, ebx
 	nop
-	loop .L2
+	dec ecx
+	cmp ecx, 0
+	jne .L2
 	pop ebp
 	ret
 */
@@ -40,23 +24,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ARG_REGISTER 'r' /* move in old register data from active register */
-#define ARG_FOR      'f' /* for */
-#define ARG_LOAD     'l' /* mov register, 0 */
-#define ARG_MALLOC   'm' /* malloc array */
-#define ARG_ADD      'a' /* addition */
-#define ARG_SUB      's' /* substruction */
-#define ARG_EXIT     'e' /* exit program */
-#define ARG_NOP      'n' /* not operation */
-#define ARG_LEFT     '<' /* left  register */
-#define ARG_RIGHT    '>' /* right register */
-#define ARG_PUSH     'u' /* write data */
-#define ARG_POP      'o' /* read data */
-#define ARG_CONTINUE ',' /* using old command */
-#define ARG_BEGIN    '('
-#define ARG_END      ')'
-#define ARG_START    '['
-#define ARG_FINISH   ']'
+#ifdef OS_WINDOWS
+#define OS_WINDOWS 1
+#endif
+
+#define ARG_DEC       'd' /* decrement register */
+#define ARG_INC       'i' /* increment register */
+#define ARG_REGISTER  'r' /* using active register */
+#define ARG_LOAD      'l' /* mov data in active register */
+#define ARG_MALLOC    'm' /* malloc array */
+#define ARG_ADD       'a' /* addition active register and (data/active register) */
+#define ARG_SUB       's' /* substruction active register and (data/active register) */
+#define ARG_EXIT      'e' /* exit program */
+#define ARG_NOP       'n' /* not operation */
+#define ARG_LEFT      '<' /* left register */
+#define ARG_RIGHT     '>' /* right register */
+#define ARG_PUSH      'u' /* write data in stack */
+#define ARG_POP       'o' /* read data from stack */
+#define ARG_CONTINUE  ',' /* using old command */
+
+#define ARG_FOR       'f' /* while cycle */
+#define ARG_START     '[' /* start for cycle */
+#define ARG_FINISH    ']' /* finish for cycle */
+#define ARG_BEGIN     '(' /* begin block data */
+#define ARG_END       ')' /* end block data */
 
 #define REGISTER_QUANTITY 8
 
@@ -65,8 +56,8 @@ typedef enum {
 } REG;
 
 typedef enum {
-/*  0    1    2     3    4      5     6    7    8 */
-  ADD, SUB, MOV, PUSH, POP, LABEL, LOOP, RET, NOP
+/*  0    1    2     3    4      5     6    7    8    9   10 */
+  ADD, SUB, MOV, PUSH, POP, LABEL, LOOP, RET, NOP, INC, DEC
 } COM;
 
 typedef enum {
@@ -74,7 +65,7 @@ typedef enum {
 } USI;
 
 typedef enum {
-  EXP_COMMAND, EXP_OPERAND, EXP_UNKNOWN
+  EXP_COMMAND, EXP_OPERAND, EXP_NEXT
 } EXP;
 
 typedef struct {
@@ -93,7 +84,7 @@ typedef struct {
 
 const char * __command[] = {
   "add", "sub", "mov", "push", "pop",
-  "label", "loop", "ret", "nop"
+  "label", "jne", "ret", "nop", "inc", "dec"
 };
 
 const char * __register[] = {
@@ -103,33 +94,34 @@ const char * __register[] = {
 
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
 void __assembler(chip * ctx, char data) {
-  if (REGISTER == ctx->using && ARG_REGISTER == data) {
-    printf("%s", __register[ctx->regist]);
-  }
-  else
   if (OPERATION == ctx->using) {
     if (LABEL == ctx->command) {
       ctx->loop++;
-      printf("\n.L%d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) : ctx->loop_counter);
+      printf("\n.L%d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) + ctx->loop_corrector : ctx->loop_counter);
     }
     else
     if (LOOP == ctx->command) {
-      printf("\n\t%s .L%d", __command[ctx->command],
+      printf("\n\tdec ecx\n\tcmp ecx, 0\n\t%s .L%d", __command[ctx->command],
                            (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) - ctx->loop_corrector : ctx->loop_counter);
-      ctx->loop_corrector++;
       ctx->loop--;
+      if (ctx->loop > 0)
+        ctx->loop_corrector++;
       if (ctx->loop < 0) ctx->loop = 0;
     }
     else
-    if (PUSH == ctx->command || POP == ctx->command)
-      printf("\n\t%s %s", __command[ctx->command],
-                          __register[ctx->regist]);
+    if (INC  == ctx->command || DEC == ctx->command ||
+        PUSH == ctx->command || POP == ctx->command)
+		
+      printf("\n\t%s %s", __command[ctx->command], __register[ctx->regist]);
     else
     if (RET == ctx->command || NOP == ctx->command)
       printf("\n\t%s", __command[ctx->command]);
     else
-      printf("\n\t%s %s, ", __command[ctx->command],
-                            __register[ctx->regist]);
+      printf("\n\t%s %s, ", __command[ctx->command], __register[ctx->regist]);
+  }
+  else
+  if (REGISTER == ctx->using && ARG_REGISTER == data) {
+    printf("%s", __register[ctx->regist]);
   }
   else
   if (DATA == ctx->using) {
@@ -143,6 +135,10 @@ void __assembler(chip * ctx, char data) {
 void __parser(chip * ctx, char data) {
 /***************************************************************/
   ctx->using  = DATA;
+
+#ifdef OS_WINDOWS /* перевод строки в Windows системах */
+  if (data == 0x0D) return;
+#endif
 
   if (data == ' ' || data == '\n' || data == '\t') {
     return;
@@ -200,13 +196,12 @@ void __parser(chip * ctx, char data) {
     }
 
     if (ctx->loop_corrector > 0) {
+      ctx->loop_counter += ctx->loop_corrector;
       ctx->loop_corrector = 0;
-      ctx->loop_counter += ctx->loop_counter;
     }
 
     ctx->loop_counter++;
     ctx->command = MOV;
-
     return;
   }
 
@@ -235,14 +230,16 @@ void __parser(chip * ctx, char data) {
   }
 
   switch(data) {
-    case ARG_ADD:      ctx->command = ADD;  break;
-    case ARG_SUB:      ctx->command = SUB;  break;
-    case ARG_LOAD:     ctx->command = MOV;  break;
-    case ARG_PUSH:     ctx->command = PUSH; break;
-    case ARG_EXIT:     ctx->command = RET;  break;
-    case ARG_POP:      ctx->command = POP;  break;
-    case ARG_NOP:      ctx->command = NOP;  break;
-    case ARG_CONTINUE: break;
+    case ARG_ADD:       ctx->command = ADD;  break;
+    case ARG_SUB:       ctx->command = SUB;  break;
+    case ARG_LOAD:      ctx->command = MOV;  break;
+    case ARG_PUSH:      ctx->command = PUSH; break;
+    case ARG_EXIT:      ctx->command = RET;  break;
+    case ARG_POP:       ctx->command = POP;  break;
+    case ARG_NOP:       ctx->command = NOP;  break;
+	case ARG_INC:       ctx->command = INC;  break;
+	case ARG_DEC:       ctx->command = DEC;  break;
+    case ARG_CONTINUE:  break;
   }
 /***************************************************************/
 }
@@ -271,7 +268,8 @@ int __corrector(char * data, int size) {
         ARG_EXIT     != data[i] && ARG_START  != data[i] &&
         ARG_FINISH   != data[i] && ARG_LOAD   != data[i] &&
         ARG_BEGIN    != data[i] && ARG_END    != data[i] &&
-        ARG_CONTINUE != data[i] && ARG_NOP    != data[i] && ARG_REGISTER != data[i]) {
+        ARG_CONTINUE != data[i] && ARG_NOP    != data[i] &&
+		ARG_REGISTER != data[i] && ARG_DEC    != data[i] && ARG_INC != data[i]) {
 
       res = i;
       break;
