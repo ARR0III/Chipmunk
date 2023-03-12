@@ -3,23 +3,23 @@ File open: "chip.cm"
 	push ebp
 	mov ebp, esp
 	mov eax, 00
-	mov ebx, 10
-	mov ecx, ebx
+	mov ecx, 10
+	mov ecx, eax
 .L1:
-	add eax, ebx
-	add ebx, eax
+	add eax, ecx
+	add ecx, eax
 	inc eax
-	inc ebx
+	inc ecx
 	push ecx
 	mov ecx, (2*11-2)
 .L2:
-	add ebx, eax
+	add ecx, eax
 	inc eax
-	inc ebx
+	inc ecx
 	push ecx
 	mov ecx, 30
 .L3:
-	add eax, ebx
+	add eax, ecx
 	add eax, 00C0FFEE
 	sub eax, 30
 	sub eax, 3330
@@ -37,7 +37,7 @@ File open: "chip.cm"
 	mov ecx, 40
 .L4:
 	dec eax
-	dec ebx
+	dec ecx
 	dec ecx
 	cmp ecx, 0
 	jne .L4
@@ -45,12 +45,23 @@ File open: "chip.cm"
 	dec ecx
 	cmp ecx, 0
 	jne .L1
-	mov ecx, 0BAD
+	mov edx, 0BAD
 	mov ecx, ecx
 .L5:
 	nop
 	dec ecx
 	cmp ecx, 0
 	jne .L5
+	mov eax, 10
+	mov ecx, 20
+	add eax, ecx
+	mov edx, eax
+	mov ecx, ecx
+.L6:
+	inc eax
+	inc ecx
+	dec ecx
+	cmp ecx, 0
+	jne .L6
 	pop ebp
 	ret
