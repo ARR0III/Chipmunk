@@ -51,6 +51,13 @@
 
 #define REGISTER_QUANTITY 8
 
+typedef size_t DATA_T;
+
+typedef struct stack {
+  DATA_T         data;
+  struct stack * prev;
+} node_t, stack_t;
+
 typedef enum {
   REG_EAX, REG_EBX, REG_ECX, REG_EDX,
   REG_ESP, REG_EBP, REG_ESI, REG_EDI
@@ -70,11 +77,6 @@ typedef enum {
   EXP_COMMAND, EXP_OPERAND, EXP_NEXT
 } EXP;
 
-typedef struct struct_stack {
-  int            data;
-  struct struct_stack * prev;
-} struct_stack;
-
 typedef struct {
   USI   using;        /* OPERATION, REGISTER or DATA */
   COM   command;      /* using command */
@@ -84,10 +86,8 @@ typedef struct {
 
   EXP   expect;       /* expect data or this alono command */
 
-  int   loop;         /* counter "for" cycles in "for cycle" */
+  int   loop;
   int   loop_counter; /* counter "for" cycles */
-
-  struct_stack * stack; /* dynamic list loop metks */
 } chip;
 
 const char * __command[] = {
@@ -104,15 +104,61 @@ const char * __register[] = {
   "esp", "ebp", "esi", "edi"
 };
 
+void stack_push(stack_t ** s, int loop) {
+  node_t * tmp = NULL;
+           tmp = (node_t *)malloc(sizeof(node_t));
+
+  if (NULL == tmp) {
+    printf("[!] ERROR: cannot allocate memory!\n");
+    exit(-1);
+  }
+
+  tmp->data = loop;
+  tmp->prev = *s;
+  *s = tmp;
+}
+
+/* if stack == NULL then return code 1 */
+int stack_empty(stack_t ** s) {
+  return (NULL == *s);
+}
+
+void stack_pop(stack_t ** s, int * loop) {
+  node_t * tmp;
+
+  if (NULL == *s) return;
+
+  *loop = (*s)->data;
+
+  tmp = *s;
+  *s = (*s)->prev;
+  free(tmp);
+}
+
+void stack_burn(stack_t ** s) {
+  node_t * tmp;
+
+  while(!stack_empty(s)) {
+    tmp = (*s)->prev;
+    (*s)->data = 0; /* for security */
+    free(*s);
+    *s = tmp;
+  }
+}
+
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
-void __assembler(chip * ctx, char data) {
+void __assembler(stack_t ** s, chip * ctx, char data) {
+  int loop_metka = 0;
+
   if (OPERATION == ctx->using) {
     if (LABEL == ctx->command) {
-      printf("\n.L%d:", ctx->stack->data);
+      stack_push(s, ctx->loop_counter);
+      printf("\n.L%d:", ctx->loop_counter);
     }
     else
     if (LOOP == ctx->command) {
-      printf("%s .L%d", __command[ctx->command], ctx->stack->data);
+      stack_pop(s, &loop_metka);
+      printf("%s .L%d", __command[ctx->command], loop_metka);
     }
     else
     if (INC  == ctx->command || DEC == ctx->command ||
@@ -138,35 +184,7 @@ void __assembler(chip * ctx, char data) {
   }
 }
 
-void stack_push(struct struct_stack * s, int loop) {
-  struct struct_stack  * tmp = NULL;
-                         tmp = (struct_stack *)malloc(sizeof(struct_stack));
-
-  if (NULL == tmp) {
-    printf("[!] ERROR: cannot allocate memory!\n");
-    return;
-  }
-
-  tmp->data = loop;
-  tmp->prev = s;
-  s = tmp;
-
-  printf("++%d\n", s->data);
-}
-
-void stack_pop(struct struct_stack * s, int * loop) {
-  if (NULL == s) return;
-
-  struct struct_stack * tmp = s->prev;
-
-  *loop = s->data;
-  printf("--%d\n", s->data);
-
-  free(s);
-  s = tmp;
-}
-
-void __parser(chip * ctx, char data) {
+void __parser(stack_t ** s, chip * ctx, char data) {
 /***************************************************************/
   ctx->using  = DATA;
 
@@ -174,7 +192,7 @@ void __parser(chip * ctx, char data) {
   if (data == 0x0D) return;
 #endif
 
-  if (data == ' ' || data == '\n' || data == '\t') {
+  if (data == ' ' || data == 0x0A || data == '\t') {
     return;
   }
 
@@ -227,7 +245,7 @@ void __parser(chip * ctx, char data) {
       ctx->regist = REG_ECX;
       ctx->command = POP;
 
-      __assembler(ctx, data);
+      __assembler(s, ctx, data);
 
       ctx->regist = ctx->old_regist;
     }
@@ -239,11 +257,10 @@ void __parser(chip * ctx, char data) {
 
     if (ctx->loop > 0) {      /* if FOR() using */
       ctx->command = PUSH;
-      __assembler(ctx, data);
+      __assembler(s, ctx, data);
     }
 
     ctx->loop_counter++;
-
     ctx->command = MOV;
     return;
   }
@@ -251,11 +268,13 @@ void __parser(chip * ctx, char data) {
   if (ARG_START == data) {
     ctx->regist = ctx->old_regist;
     ctx->command = LABEL;
+    ctx->loop++;
     return;
   }
 
   if (ARG_FINISH == data) {
     ctx->command = LOOP;
+    ctx->loop--;
     return;
   }
 
@@ -316,20 +335,7 @@ void __chip_init(chip * ctx) {
   ctx->old_regist   = REG_EAX;   /* old using register */
 
   ctx->expect       = 0;         /* expect data or this alono command */
-  ctx->loop         = 0;         /* counter "for" cycles in "for cycle" */
   ctx->loop_counter = 0;         /* counter "for" cycles */
-
-  ctx->stack        = NULL;      /* dynamic list loop metks */
-}
-
-void stack_burn(struct_stack * s) {
-  struct_stack * tmp = s;
-
-  while(tmp != NULL) {
-    tmp = s->prev;
-    free(s);
-    s = tmp;
-  }
 }
 
 int main(int argc, char * argv[]) {
@@ -337,8 +343,12 @@ int main(int argc, char * argv[]) {
   char * string = NULL;
   FILE * f      = NULL;
 
-  int result, i, pos = 0;
+  int result, i;
+
+  int pos = 0;
   int c = 0;
+
+  stack_t * stack = NULL; /* dynamic list loop metks */
 
 /*****************************************************************************/
 
@@ -347,13 +357,6 @@ int main(int argc, char * argv[]) {
   if (NULL == ctx) return -1;
 
   __chip_init(ctx);
-
-
-  stack_push(ctx->stack, 225);
-  stack_pop(ctx->stack, &result);
-  printf("%d\n", result);
-
-  exit(0);
 
 /*****************************************************************************/
 
@@ -390,16 +393,16 @@ int main(int argc, char * argv[]) {
 
   if (f) {
     while ((c = fgetc(f)) != EOF) {
-      __parser(ctx, (char)c);
-      __assembler(ctx, (char)c);
+      __parser(&stack, ctx, (char)c);
+      __assembler(&stack, ctx, (char)c);
     }
 
     putc('\n', stdout);
   }
   else {
     while (string[pos]) {
-      __parser(ctx, string[pos]);
-      __assembler(ctx, string[pos]);
+      __parser(&stack, ctx, string[pos]);
+      __assembler(&stack, ctx, string[pos]);
       pos++;
     }
 
@@ -408,7 +411,7 @@ int main(int argc, char * argv[]) {
 
 /*****************************************************************************/
 
-  stack_burn(ctx->stack);
+  stack_burn(&stack);
 
   free(ctx);
 
