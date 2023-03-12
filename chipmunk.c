@@ -57,7 +57,7 @@ typedef struct stack {
 } node_t, stack_t;
 
 typedef enum {
-  REG_EAX, REG_EBX, REG_ECX, REG_EDX,
+  REG_EAX, REG_ECX, REG_EDX, REG_EBX,
   REG_ESP, REG_EBP, REG_ESI, REG_EDI
 
 } REG;
@@ -98,7 +98,7 @@ const char * __command[] = {
 };
 
 const char * __register[] = {
-  "eax", "ebx", "ecx", "edx",
+  "eax", "ecx", "edx", "ebx",
   "esp", "ebp", "esi", "edi"
 };
 
