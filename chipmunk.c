@@ -28,31 +28,33 @@
 #define OS_WINDOWS 1
 #endif
 
-#define ARG_DEC       'd' /* decrement register */
-#define ARG_INC       'i' /* increment register */
-#define ARG_REGISTER  'r' /* using active register */
-#define ARG_LOAD      'l' /* mov data in active register */
-#define ARG_MALLOC    'm' /* malloc array */
-#define ARG_ADD       'a' /* addition active register and (data/active register) */
-#define ARG_SUB       's' /* substruction active register and (data/active register) */
-#define ARG_EXIT      'e' /* exit program */
-#define ARG_NOP       'n' /* not operation */
-#define ARG_LEFT      '<' /* left register */
-#define ARG_RIGHT     '>' /* right register */
-#define ARG_PUSH      'u' /* write data in stack */
-#define ARG_POP       'o' /* read data from stack */
-#define ARG_CONTINUE  ',' /* using old command */
+#define ARG_DEC      'd' /* decrement register */
+#define ARG_INC      'i' /* increment register */
+#define ARG_REGISTER 'r' /* using active register */
+#define ARG_LOAD     'l' /* mov data in active register */
+#define ARG_MALLOC   'm' /* malloc array */
+#define ARG_ADD      'a' /* addition active register and (data/active register) */
+#define ARG_SUB      's' /* substruction active register and (data/active register) */
+#define ARG_EXIT     'e' /* exit program */
+#define ARG_NOP      'n' /* not operation */
+#define ARG_LEFT     '<' /* left register */
+#define ARG_RIGHT    '>' /* right register */
+#define ARG_PUSH     'u' /* write data in stack */
+#define ARG_POP      'o' /* read data from stack */
+#define ARG_CONTINUE ',' /* using old command */
 
-#define ARG_FOR       'f' /* while cycle */
-#define ARG_START     '[' /* start for cycle */
-#define ARG_FINISH    ']' /* finish for cycle */
-#define ARG_BEGIN     '(' /* begin block data */
-#define ARG_END       ')' /* end block data */
+#define ARG_FOR      'f' /* while cycle */
+#define ARG_START    '[' /* start for cycle */
+#define ARG_FINISH   ']' /* finish for cycle */
+#define ARG_BEGIN    '(' /* begin block data */
+#define ARG_END      ')' /* end block data */
 
 #define REGISTER_QUANTITY 8
 
 typedef enum {
-  REG_EAX, REG_EBX, REG_ECX, REG_EDX, REG_ESP, REG_EBP, REG_ESI, REG_EDI,
+  REG_EAX, REG_EBX, REG_ECX, REG_EDX,
+  REG_ESP, REG_EBP, REG_ESI, REG_EDI
+
 } REG;
 
 typedef enum {
@@ -68,23 +70,33 @@ typedef enum {
   EXP_COMMAND, EXP_OPERAND, EXP_NEXT
 } EXP;
 
+typedef struct struct_stack {
+  int            data;
+  struct struct_stack * prev;
+} struct_stack;
+
 typedef struct {
-  USI   using;          /* OPERATION, REGISTER or DATA */
-  COM   command;        /* using command */
+  USI   using;        /* OPERATION, REGISTER or DATA */
+  COM   command;      /* using command */
 
-  REG   regist;         /* using eax, ebx, ecx, edx */
-  REG   old_regist;     /* old using register */
+  REG   regist;       /* using eax, ebx, ecx, edx */
+  REG   old_regist;   /* old using register */
 
-  EXP   expect;         /* expect data or this alono command */
+  EXP   expect;       /* expect data or this alono command */
 
-  int   loop;           /* index loop metka */
-  int   loop_counter;
-  int   loop_corrector;
+  int   loop;         /* counter "for" cycles in "for cycle" */
+  int   loop_counter; /* counter "for" cycles */
+
+  struct_stack * stack; /* dynamic list loop metks */
 } chip;
 
 const char * __command[] = {
   "add", "sub", "mov", "push", "pop",
-  "label", "jne", "ret", "nop", "inc", "dec"
+  "label", 
+
+  "\n\tdec ecx\n\tcmp ecx, 0\n\tjne",
+
+  "ret", "nop", "inc", "dec"
 };
 
 const char * __register[] = {
@@ -96,17 +108,11 @@ const char * __register[] = {
 void __assembler(chip * ctx, char data) {
   if (OPERATION == ctx->using) {
     if (LABEL == ctx->command) {
-      ctx->loop++;
-      printf("\n.L%d:", (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) + ctx->loop_corrector : ctx->loop_counter);
+      printf("\n.L%d:", ctx->stack->data);
     }
     else
     if (LOOP == ctx->command) {
-      printf("\n\tdec ecx\n\tcmp ecx, 0\n\t%s .L%d", __command[ctx->command],
-                           (ctx->loop > 0) ? (ctx->loop_counter + ctx->loop) - ctx->loop_corrector : ctx->loop_counter);
-      ctx->loop--;
-      if (ctx->loop > 0)
-        ctx->loop_corrector++;
-      if (ctx->loop < 0) ctx->loop = 0;
+      printf("%s .L%d", __command[ctx->command], ctx->stack->data);
     }
     else
     if (INC  == ctx->command || DEC == ctx->command ||
@@ -130,6 +136,34 @@ void __assembler(chip * ctx, char data) {
     }
     putc(data, stdout);
   }
+}
+
+void stack_push(struct struct_stack * s, int loop) {
+  struct struct_stack  * tmp = NULL;
+                         tmp = (struct_stack *)malloc(sizeof(struct_stack));
+
+  if (NULL == tmp) {
+    printf("[!] ERROR: cannot allocate memory!\n");
+    return;
+  }
+
+  tmp->data = loop;
+  tmp->prev = s;
+  s = tmp;
+
+  printf("++%d\n", s->data);
+}
+
+void stack_pop(struct struct_stack * s, int * loop) {
+  if (NULL == s) return;
+
+  struct struct_stack * tmp = s->prev;
+
+  *loop = s->data;
+  printf("--%d\n", s->data);
+
+  free(s);
+  s = tmp;
 }
 
 void __parser(chip * ctx, char data) {
@@ -208,12 +242,8 @@ void __parser(chip * ctx, char data) {
       __assembler(ctx, data);
     }
 
-    if (ctx->loop_corrector > 0) {
-      ctx->loop_counter += ctx->loop_corrector;
-      ctx->loop_corrector = 0;
-    }
-
     ctx->loop_counter++;
+
     ctx->command = MOV;
     return;
   }
@@ -230,16 +260,16 @@ void __parser(chip * ctx, char data) {
   }
 
   switch(data) {
-    case ARG_ADD:       ctx->command = ADD;  break;
-    case ARG_SUB:       ctx->command = SUB;  break;
-    case ARG_LOAD:      ctx->command = MOV;  break;
-    case ARG_PUSH:      ctx->command = PUSH; break;
-    case ARG_EXIT:      ctx->command = RET;  break;
-    case ARG_POP:       ctx->command = POP;  break;
-    case ARG_NOP:       ctx->command = NOP;  break;
-	case ARG_INC:       ctx->command = INC;  break;
-	case ARG_DEC:       ctx->command = DEC;  break;
-    case ARG_CONTINUE:  break;
+    case ARG_ADD:      ctx->command = ADD;  break;
+    case ARG_SUB:      ctx->command = SUB;  break;
+    case ARG_LOAD:     ctx->command = MOV;  break;
+    case ARG_PUSH:     ctx->command = PUSH; break;
+    case ARG_EXIT:     ctx->command = RET;  break;
+    case ARG_POP:      ctx->command = POP;  break;
+    case ARG_NOP:      ctx->command = NOP;  break;
+    case ARG_INC:      ctx->command = INC;  break;
+    case ARG_DEC:      ctx->command = DEC;  break;
+    case ARG_CONTINUE: break;
   }
 /***************************************************************/
 }
@@ -269,7 +299,7 @@ int __corrector(char * data, int size) {
         ARG_FINISH   != data[i] && ARG_LOAD   != data[i] &&
         ARG_BEGIN    != data[i] && ARG_END    != data[i] &&
         ARG_CONTINUE != data[i] && ARG_NOP    != data[i] &&
-		ARG_REGISTER != data[i] && ARG_DEC    != data[i] && ARG_INC != data[i]) {
+        ARG_REGISTER != data[i] && ARG_DEC    != data[i] && ARG_INC != data[i]) {
 
       res = i;
       break;
@@ -280,14 +310,26 @@ int __corrector(char * data, int size) {
 }
 
 void __chip_init(chip * ctx) {
-  ctx->regist         = REG_EAX;   /* first register */
-  ctx->using          = OPERATION; /* OPERATION, REGISTER or DATA */
-  ctx->old_regist     = REG_EAX;   /* old using register */
-  ctx->command        = RET;       /* using command */
-  ctx->loop           = 0;         /* index loop metka */
-  ctx->loop_counter   = 0;         /* counter 'f' metks */
-  ctx->loop_corrector = 0;         /* ---долго объяснять что это за хренатень--- */
-  ctx->expect         = EXP_COMMAND;      /* what we are expect */
+  ctx->using        = OPERATION; /* OPERATION, REGISTER or DATA */
+  ctx->command      = NOP;       /* using command */
+  ctx->regist       = REG_EAX;   /* using eax, ebx, ecx, edx */
+  ctx->old_regist   = REG_EAX;   /* old using register */
+
+  ctx->expect       = 0;         /* expect data or this alono command */
+  ctx->loop         = 0;         /* counter "for" cycles in "for cycle" */
+  ctx->loop_counter = 0;         /* counter "for" cycles */
+
+  ctx->stack        = NULL;      /* dynamic list loop metks */
+}
+
+void stack_burn(struct_stack * s) {
+  struct_stack * tmp = s;
+
+  while(tmp != NULL) {
+    tmp = s->prev;
+    free(s);
+    s = tmp;
+  }
 }
 
 int main(int argc, char * argv[]) {
@@ -298,11 +340,22 @@ int main(int argc, char * argv[]) {
   int result, i, pos = 0;
   int c = 0;
 
+/*****************************************************************************/
+
   chip * ctx = (chip *)malloc(sizeof(chip));
 
-  if (ctx == NULL) return -1;
+  if (NULL == ctx) return -1;
 
   __chip_init(ctx);
+
+
+  stack_push(ctx->stack, 225);
+  stack_pop(ctx->stack, &result);
+  printf("%d\n", result);
+
+  exit(0);
+
+/*****************************************************************************/
 
   if (argc == 2 && argv[1]) {
     f = fopen(argv[1], "rb");
@@ -353,7 +406,14 @@ int main(int argc, char * argv[]) {
     putc('\n', stdout);
   }
 
+/*****************************************************************************/
+
+  stack_burn(ctx->stack);
+
   free(ctx);
+
+/*****************************************************************************/
 
   return 0;
 }
+
