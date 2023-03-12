@@ -49,8 +49,6 @@
 #define ARG_BEGIN    '(' /* begin block data */
 #define ARG_END      ')' /* end block data */
 
-#define REGISTER_QUANTITY 8
-
 typedef size_t DATA_T;
 
 typedef struct stack {
@@ -118,21 +116,23 @@ void stack_push(stack_t ** s, int loop) {
   *s = tmp;
 }
 
-/* if stack == NULL then return code 1 */
-int stack_empty(stack_t ** s) {
-  return (NULL == *s);
-}
-
 void stack_pop(stack_t ** s, int * loop) {
   node_t * tmp;
 
-  if (NULL == *s) return;
+  if (NULL == *s) {
+    return;
+  }
 
   *loop = (*s)->data;
 
   tmp = *s;
   *s = (*s)->prev;
   free(tmp);
+}
+
+/* if stack == NULL then return code 1 */
+int stack_empty(stack_t ** s) {
+  return (NULL == *s);
 }
 
 void stack_burn(stack_t ** s) {
@@ -334,7 +334,9 @@ void __chip_init(chip * ctx) {
   ctx->regist       = REG_EAX;   /* using eax, ebx, ecx, edx */
   ctx->old_regist   = REG_EAX;   /* old using register */
 
-  ctx->expect       = 0;         /* expect data or this alono command */
+  ctx->expect       = 0;         /* expect data or this alone command */
+
+  ctx->loop         = 0;         /* translate("счетчик вложенных циклов"); */
   ctx->loop_counter = 0;         /* counter "for" cycles */
 }
 
