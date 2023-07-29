@@ -92,7 +92,7 @@ const char * __command[] = {
   "add", "sub", "mov", "push", "pop",
   "label", 
 
-  "\n\tdec ecx\n\tcmp ecx, 0\n\tjne",
+  "\n\tdec ecx\n\tjnz",
 
   "ret", "nop", "inc", "dec"
 };
