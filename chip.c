@@ -1,28 +1,25 @@
 /*
   This is translator for programming language "Chipmunk";
 
-  BEFORE: "<<<ul<rn>>>>>>l100<<l0>l1<[a>rl<ru]l4>l1>l<<<<<<r>>>>>l4<<<c80<<<<a0190>oe"
+  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
 
   AFTER:
-	push ebp
-	mov ebp, esp
-	nop
-	mov ecx, 100
-	mov eax, 0
-	mov ebx, 1
+	sub esp, 1024
+	xor eax, eax
+	mov ecx, 256
 .L0:
-	add eax, ebx
-	mov ebx, eax
-	push eax
+	mov [esp], eax
+	add esp, 4
 	dec ecx
 	jnz .L0
+	nop
+	sub esp, 1024
 	mov eax, 4
 	mov ebx, 1
 	mov ecx, esp
-	mov ebx, 4
+	mov edx, 1024
 	int 0x80
-	add ecx, 0190
-	pop edx
+	add esp, 1024
 	ret
 
 */
@@ -39,7 +36,7 @@
 #define ARG_INC      'i' /* increment register */
 #define ARG_REGISTER 'r' /* using active register */
 #define ARG_LOAD     'l' /* mov data in active register */
-#define ARG_ADDR     '&' /* mox dara in address | [operand] */
+#define ARG_ADDR     '&' /* mov data in address */
 #define ARG_MALLOC   'm' /* malloc array */
 #define ARG_ADD      'a' /* addition active register and (data/active register) */
 #define ARG_SUB      's' /* substruction active register and (data/active register) */
