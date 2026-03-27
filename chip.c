@@ -45,7 +45,9 @@
 #define ARG_MALLOC   'm' /* malloc array */
 #define ARG_ADD      'a' /* addition active register and (data/active register) */
 #define ARG_SUB      's' /* substruction active register and (data/active register) */
+#define ARG_XOR      'x' /* just xor */
 #define ARG_EXIT     'e' /* exit program */
+#define ARG_INT      'c' /* call to operation system */
 #define ARG_NOP      'n' /* not operation */
 #define ARG_LEFT     '<' /* left register */
 #define ARG_RIGHT    '>' /* right register */
@@ -73,8 +75,8 @@ typedef enum {
 } REG;
 
 typedef enum {
-/*  0    1    2     3    4      5     6    7    8    9   10    11 */
-  ADD, SUB, MOV, PUSH, POP, LABEL, LOOP, RET, NOP, INC, DEC, ADDR
+/*  0    1    2    3    4     5    6      7     8    9   10   11   12    13 */
+  ADD, SUB, XOR, MOV, PUSH, POP, INT, LABEL, LOOP, RET, NOP, INC, DEC, ADDR
 } COM;
 
 typedef enum {
@@ -94,8 +96,8 @@ typedef struct {
 } chip;
 
 const char * __command[] = {
-  "add", "sub", "mov", "push", "pop",
-  "label", 
+  "add", "sub", "xor", "mov", "push", "pop", "int",
+  "label",
 
   "\n\tdec ecx\n\tjnz",
 
@@ -166,8 +168,12 @@ void __assembler(stack_t ** s, chip * ctx, char data) {
       printf("%s .L%d", __command[ctx->command], loop_metka);
     }
     else
+    if (INT == ctx->command) {
+      printf("\n\t%s 0x", __command[ctx->command]);
+    }
+    else
     if (INC  == ctx->command || DEC == ctx->command ||
-        PUSH == ctx->command || POP == ctx->command)   {
+        PUSH == ctx->command || POP == ctx->command) {
 
       printf("\n\t%s %s", __command[ctx->command], __register[ctx->regist]);
     }
@@ -303,8 +309,10 @@ void __parser(stack_t ** s, chip * ctx, char data) {
   switch(data) {
     case ARG_ADD:      ctx->command = ADD;  break;
     case ARG_SUB:      ctx->command = SUB;  break;
+    case ARG_XOR:      ctx->command = XOR;  break;
     case ARG_LOAD:     ctx->command = MOV;  break;
     case ARG_PUSH:     ctx->command = PUSH; break;
+    case ARG_INT:      ctx->command = INT;  break;
     case ARG_EXIT:     ctx->command = RET;  break;
     case ARG_POP:      ctx->command = POP;  break;
     case ARG_NOP:      ctx->command = NOP;  break;
@@ -342,7 +350,8 @@ int __corrector(char * data, int size) {
         ARG_BEGIN    != data[i] && ARG_END    != data[i] &&
         ARG_CONTINUE != data[i] && ARG_NOP    != data[i] &&
         ARG_REGISTER != data[i] && ARG_DEC    != data[i] &&
-        ARG_INC      != data[i] && ARG_ADDR   != data[i]) {
+        ARG_INC      != data[i] && ARG_ADDR   != data[i] &&
+        ARG_XOR      != data[i] && ARG_INT    != data[i] ) {
 
       res = i;
       break;
