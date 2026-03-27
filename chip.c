@@ -56,12 +56,18 @@
 #define ARG_BEGIN    '(' /* begin block data */
 #define ARG_END      ')' /* end block data */
 
+#define FALSE         0
+#define TRUE          1
+#define STACK_SIZE 1000
+
 typedef size_t DATA_T;
 
 typedef struct stack {
-  DATA_T         data;
+  DATA_T number[STACK_SIZE];
+  DATA_T counter;
+
   struct stack * prev;
-} node_t, stack_t;
+} stack_t;
 
 typedef enum {
   REG_EAX, REG_EBX, REG_ECX, REG_EDX,
@@ -104,48 +110,55 @@ const char * __register[] = {
   "esp", "ebp", "esi", "edi"
 };
 
-void stack_push(stack_t ** s, int loop) {
-  node_t * tmp = NULL;
-           tmp = (node_t *)malloc(sizeof(node_t));
+void stack_free(stack_t ** stack) {
+  stack_t * tmp;
 
-  if (NULL == tmp) {
-    printf("[!] ERROR: cannot allocate memory!\n");
-    exit(-1);
+  while(*stack) {
+    tmp = *stack;
+    *stack = (*stack)->prev;
+    free(tmp);
   }
-
-  tmp->data = loop;
-  tmp->prev = *s;
-  *s = tmp;
 }
 
-void stack_pop(stack_t ** s, int * loop) {
-  node_t * tmp;
+void stack_new(stack_t ** stack, int number) {
+  stack_t * tmp = (stack_t *)malloc(sizeof(stack_t));
 
-  if (NULL == *s) {
+  if (NULL == tmp) {
+    stack_free(stack);
+    exit(1);
+  }
+
+  tmp->number[0] = number;
+  tmp->counter   = 1;
+  tmp->prev      = *stack;
+  *stack         = tmp;
+}
+
+void stack_push(stack_t ** stack, int number) {
+  if (*stack && (*stack)->counter < STACK_SIZE) {
+    (*stack)->number[(*stack)->counter] = number;
+    (*stack)->counter++;
     return;
   }
 
-  *loop = (*s)->data;
-
-  tmp = *s;
-  *s = (*s)->prev;
-  free(tmp);
+  stack_new(stack, number);
 }
 
-/* if stack == NULL then return code 1 */
-int stack_empty(stack_t ** s) {
-  return (NULL == *s);
-}
+void stack_pop(stack_t ** stack, int * number) {
+  stack_t * tmp;
 
-void stack_burn(stack_t ** s) {
-  node_t * tmp;
+  if (NULL == *stack) return;
 
-  while(!stack_empty(s)) {
-    tmp = (*s)->prev;
-    (*s)->data = 0; /* for security */
-    free(*s);
-    *s = tmp;
+  if (0 == (*stack)->counter) {
+    tmp = (*stack)->prev;
+    free(*stack);
+    *stack = tmp;
   }
+
+  if (NULL == *stack) return;
+
+  *number = (*stack)->number[(*stack)->counter-1];
+  (*stack)->counter--;
 }
 
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
@@ -440,7 +453,7 @@ int main(int argc, char * argv[]) {
 
 /*****************************************************************************/
 
-  stack_burn(&stack);
+  stack_free(&stack);
 
   free(ctx);
 
