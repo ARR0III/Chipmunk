@@ -456,7 +456,7 @@ int main(int argc, char * argv[]) {
     }
   }
   else {
-    string = "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e";
+    string = "l1>l2>>>s400<<<<f100[a>rx<rx>rx<r>>>>&l<<<<r>>>>a4<<<<]<<<<s400>>>>l4>l1>l>>r<l400c80>a400e";
   }
 
   if (NULL == f) {
