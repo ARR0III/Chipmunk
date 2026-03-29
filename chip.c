@@ -1,28 +1,29 @@
 /*
   This is translator for programming language "Chipmunk";
 
-  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4<<de]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
+  BEFORE: "l1>l2>>>s400<<<<f100[a>rx<rx>rx<r>>>>&l<<<<r>>>>a4<<<<]<<<<s400>>>>l4>l1>l>>r<l400c80>a400e"
 
   AFTER:
-	sub esp, 1024
-	xor eax, eax
-	mov ecx, 256
+	mov eax, 1
+	mov ebx, 2
+	sub esp, 400
+	mov ecx, 100
 .L1:
+	add eax, ebx
+	xor ebx, eax
+	xor eax, ebx
+	xor ebx, eax
 	mov [esp], eax
 	add esp, 4
 	dec ecx
-	test ecx, ecx
-	jz .E1
-	jmp .L1
-.E1:
-	nop
-	sub ecx, 1024
-	mov esi, 4
-	mov edi, 1
-	mov eax, ecx
-	mov ebx, 1024
+	jnz .L1
+	sub esp, 400
+	mov eax, 4
+	mov ebx, 1
+	mov ecx, esp
+	mov edx, 400
 	int 0x80
-	add ecx, 1024
+	add esp, 400
 	ret
 
 */
