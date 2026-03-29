@@ -1,28 +1,28 @@
 /*
   This is translator for programming language "Chipmunk";
 
-  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4e]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
+  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4<<de]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
 
   AFTER:
 	sub esp, 1024
 	xor eax, eax
 	mov ecx, 256
-.L0:
+.L1:
 	mov [esp], eax
 	add esp, 4
-	test eax, eax
-	jz .E0
 	dec ecx
-	jnz .L0
-.E0:
+	test ecx, ecx
+	jz .E1
+	jmp .L1
+.E1:
 	nop
-	sub esp, 1024
-	mov eax, 4
-	mov ebx, 1
-	mov ecx, esp
-	mov edx, 1024
+	sub ecx, 1024
+	mov esi, 4
+	mov edi, 1
+	mov eax, ecx
+	mov ebx, 1024
 	int 0x80
-	add esp, 1024
+	add ecx, 1024
 	ret
 
 */
@@ -79,11 +79,11 @@ typedef enum {
 } REG;
 
 typedef enum {
-/*  0    1    2    3    4     5      6      7 */
-  ADD,  SUB, XOR, MOV, PUSH, POP,  INT, LABEL,
+/*  0    1    2    3    4     5    6     7      8 */
+  ADD,  SUB, XOR, JZ, MOV, PUSH, POP,  INT, LABEL,
 
-/*   8   9   10   11   12   13     14         */
-  LOOP, JZ, RET, NOP, INC, DEC,  ADDR
+/*   8    9   10   11   12   13     14            */
+  LOOP, JMP, RET, NOP, INC, DEC,  ADDR
 } COM;
 
 typedef enum {
@@ -97,6 +97,7 @@ typedef struct {
   REG   regist;       /* using eax, ebx, ecx, edx */
   REG   old_regist;   /* old using register */
 
+  int   infinity;     /* infinity cycles if not command 'f' */
   int   exit;         /* command 'ret' exit or jz */
   int   addr;         /* address or not ? */
   int   loop;
@@ -104,13 +105,13 @@ typedef struct {
 } chip;
 
 const char * __command[] = {
-  "add", "sub", "xor", "mov", "push", "pop", "int",
+  "add", "sub", "xor", "test", "mov", "push", "pop", "int",
   "label",
 
   "\n\tdec ecx\n\tjnz",
-  "\n\ttest eax, eax\n\tjz",
+  "\n\tjmp",
 
-  "ret", "nop", "inc", "dec"
+  "ret", "nop", "inc", "dec", "jmp"
 };
 
 const char * __register[] = {
@@ -185,7 +186,7 @@ void __assembler(stack_t ** s, chip * ctx, char data) {
       printf("\n.L%d:", ctx->loop_counter);
     }
     else
-    if (LOOP == ctx->command) {
+    if (LOOP == ctx->command || JMP == ctx->command) {
       stack_pop(s, &loop_metka);
       printf("%s .L%d", __command[ctx->command], loop_metka);
 
@@ -209,7 +210,11 @@ void __assembler(stack_t ** s, chip * ctx, char data) {
       printf("\n\t%s", __command[ctx->command]);
     else
     if (JZ == ctx->command) {
-      printf("%s .E%d", __command[ctx->command], stack_get(s));
+      printf("\n\t%s %s, %s\n\tjz .E%d",
+        __command[ctx->command],
+        __register[ctx->regist],
+        __register[ctx->regist],
+        stack_get(s));
     }
     else {
       if (ctx->addr) {
@@ -319,7 +324,7 @@ void __parser(stack_t ** s, chip * ctx, char data) {
       __assembler(s, ctx, data);
     }
 
-    ctx->loop_counter++;
+    ctx->infinity = FALSE;
     ctx->command = MOV;
     return;
   }
@@ -327,12 +332,18 @@ void __parser(stack_t ** s, chip * ctx, char data) {
   if (ARG_START == data) {
     ctx->regist  = ctx->old_regist;
     ctx->command = LABEL;
+    ctx->loop_counter++;
     ctx->loop++;
     return;
   }
 
   if (ARG_FINISH == data) {
-    ctx->command = LOOP;
+    if (ctx->infinity)
+      ctx->command = JMP;
+    else
+      ctx->command = LOOP;
+
+    ctx->infinity = TRUE;
     ctx->loop--;
     return;
   }
@@ -405,7 +416,7 @@ void __chip_init(chip * ctx) {
   ctx->command      = NOP;       /* using command */
   ctx->regist       = REG_EAX;   /* using eax, ebx, ecx, edx */
   ctx->old_regist   = REG_EAX;   /* old using register */
-
+  ctx->infinity     = TRUE;      /* if not 'fN' then all cycles infinity */
   ctx->addr         = 0;         /* read/write in address or not */
   ctx->loop         = 0;         /* translate("счетчик вложенных циклов"); */
   ctx->loop_counter = 0;         /* counter "for" cycles */
