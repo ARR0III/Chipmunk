@@ -1,7 +1,7 @@
 /*
   This is translator for programming language "Chipmunk";
 
-  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
+  BEFORE: "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4e]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e"
 
   AFTER:
 	sub esp, 1024
@@ -10,8 +10,11 @@
 .L0:
 	mov [esp], eax
 	add esp, 4
+	test eax, eax
+	jz .E0
 	dec ecx
 	jnz .L0
+.E0:
 	nop
 	sub esp, 1024
 	mov eax, 4
@@ -60,7 +63,7 @@
 #define TRUE          1
 #define STACK_SIZE 1000
 
-typedef size_t DATA_T;
+typedef int DATA_T;
 
 typedef struct stack {
   DATA_T number[STACK_SIZE];
@@ -76,8 +79,11 @@ typedef enum {
 } REG;
 
 typedef enum {
-/*  0    1    2    3    4     5    6      7     8    9   10   11   12    13 */
-  ADD, SUB, XOR, MOV, PUSH, POP, INT, LABEL, LOOP, RET, NOP, INC, DEC, ADDR
+/*  0    1    2    3    4     5      6      7 */
+  ADD,  SUB, XOR, MOV, PUSH, POP,  INT, LABEL,
+
+/*   8   9   10   11   12   13     14         */
+  LOOP, JZ, RET, NOP, INC, DEC,  ADDR
 } COM;
 
 typedef enum {
@@ -91,6 +97,7 @@ typedef struct {
   REG   regist;       /* using eax, ebx, ecx, edx */
   REG   old_regist;   /* old using register */
 
+  int   exit;         /* command 'ret' exit or jz */
   int   addr;         /* address or not ? */
   int   loop;
   int   loop_counter; /* counter "for" cycles */
@@ -101,6 +108,7 @@ const char * __command[] = {
   "label",
 
   "\n\tdec ecx\n\tjnz",
+  "\n\ttest eax, eax\n\tjz",
 
   "ret", "nop", "inc", "dec"
 };
@@ -120,7 +128,7 @@ void stack_free(stack_t ** stack) {
   }
 }
 
-void stack_new(stack_t ** stack, int number) {
+void stack_new(stack_t ** stack, DATA_T number) {
   stack_t * tmp = (stack_t *)malloc(sizeof(stack_t));
 
   if (NULL == tmp) {
@@ -134,7 +142,7 @@ void stack_new(stack_t ** stack, int number) {
   *stack         = tmp;
 }
 
-void stack_push(stack_t ** stack, int number) {
+void stack_push(stack_t ** stack, DATA_T number) {
   if (*stack && (*stack)->counter < STACK_SIZE) {
     (*stack)->number[(*stack)->counter] = number;
     (*stack)->counter++;
@@ -144,7 +152,7 @@ void stack_push(stack_t ** stack, int number) {
   stack_new(stack, number);
 }
 
-void stack_pop(stack_t ** stack, int * number) {
+void stack_pop(stack_t ** stack, DATA_T * number) {
   stack_t * tmp;
 
   if (NULL == *stack) return;
@@ -161,9 +169,15 @@ void stack_pop(stack_t ** stack, int * number) {
   (*stack)->counter--;
 }
 
+DATA_T stack_get(stack_t ** stack) {
+  if (NULL == *stack) return (DATA_T)0;
+
+  return (DATA_T)((*stack)->number[(*stack)->counter-1]);
+}
+
 /* DO NOT CHANGE THIS CODE IF YOU ARE WOODPECKER!!! */
 void __assembler(stack_t ** s, chip * ctx, char data) {
-  int loop_metka = 0;
+  DATA_T loop_metka = 0;
 
   if (OPERATION == ctx->using) {
     if (LABEL == ctx->command) {
@@ -174,6 +188,11 @@ void __assembler(stack_t ** s, chip * ctx, char data) {
     if (LOOP == ctx->command) {
       stack_pop(s, &loop_metka);
       printf("%s .L%d", __command[ctx->command], loop_metka);
+
+      if (ctx->exit) {
+        ctx->exit = FALSE;
+        printf("\n.E%d:", loop_metka);
+      }
     }
     else
     if (INT == ctx->command) {
@@ -186,8 +205,12 @@ void __assembler(stack_t ** s, chip * ctx, char data) {
       printf("\n\t%s %s", __command[ctx->command], __register[ctx->regist]);
     }
     else
-    if (RET == ctx->command || NOP == ctx->command)
+    if (NOP == ctx->command || RET == ctx->command)
       printf("\n\t%s", __command[ctx->command]);
+    else
+    if (JZ == ctx->command) {
+      printf("%s .E%d", __command[ctx->command], stack_get(s));
+    }
     else {
       if (ctx->addr) {
         printf("\n\t%s [%s], ", __command[ctx->command], __register[ctx->regist]);
@@ -302,7 +325,7 @@ void __parser(stack_t ** s, chip * ctx, char data) {
   }
 
   if (ARG_START == data) {
-    ctx->regist = ctx->old_regist;
+    ctx->regist  = ctx->old_regist;
     ctx->command = LABEL;
     ctx->loop++;
     return;
@@ -314,6 +337,15 @@ void __parser(stack_t ** s, chip * ctx, char data) {
     return;
   }
 
+  if (ARG_EXIT == data) {
+    if (ctx->loop) {
+      ctx->command = JZ;
+      ctx->exit    = TRUE;
+    }
+    else
+      ctx->command = RET;
+  }
+
   switch(data) {
     case ARG_ADD:      ctx->command = ADD;  break;
     case ARG_SUB:      ctx->command = SUB;  break;
@@ -321,7 +353,6 @@ void __parser(stack_t ** s, chip * ctx, char data) {
     case ARG_LOAD:     ctx->command = MOV;  break;
     case ARG_PUSH:     ctx->command = PUSH; break;
     case ARG_INT:      ctx->command = INT;  break;
-    case ARG_EXIT:     ctx->command = RET;  break;
     case ARG_POP:      ctx->command = POP;  break;
     case ARG_NOP:      ctx->command = NOP;  break;
     case ARG_INC:      ctx->command = INC;  break;
@@ -413,7 +444,7 @@ int main(int argc, char * argv[]) {
     }
   }
   else {
-    string = "u>u>u>u<<<l0>l0>l10>lFFf>r[<<<a1,10,100f20[s2,10,100f(3*10)[a30,300s30,300]ulFFa>r<no]]>>l0BAD<<fr[n,n,]>>>o<o<o<o<e";
+    string = "<<<<s1024>>>>xr>>l256[&<<<<l>>>>r<<<<a4]ns1024>>>>l4>l1>l>>r<l1024c80>a1024e";
   }
 
   if (NULL == f) {
